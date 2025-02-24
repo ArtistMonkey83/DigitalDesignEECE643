@@ -20,9 +20,7 @@
 // 
 ////////////////////////////////////////////////////////////////////////////////
 
-`timescale 1ns / 1ps
-
-module CAL(
+module CLA4(
     input  logic [3:0] a,  // 4-bit first operand, read-only signal
     input  logic [3:0] b,  // 4-bit second operand, read-only signal
     input  logic cin,      // Carry input is a single bit, read-only signal
@@ -32,7 +30,7 @@ module CAL(
     logic [3:0] G;         // Carry Generate, internal signal 
     logic [3:0] P;         // Carry Propagate, internal signal
     logic [4:0] C;         // Carry bits (including C0 = C4), internal signal
-
+ 
     assign C[0] = cin;     // Initialize carry input
 
                            // Generate carry look ahead combinational logic
@@ -41,6 +39,8 @@ module CAL(
 
                            // Compute carry values
     assign C[1] = (P[0] & C[0]) | G[0];
+    //assign C[2] = (P[1] & C[1]) | G[1];
+    //assign C[3] = (P[2] & C[2]) | G[2];
     assign C[2] = (P[1] & G[0]) | (P[1] & P[0] & C[0]) | G[1];
     assign C[3] = (P[2] & G[1]) | (P[2] & P[1] & G[0]) | (P[2] & P[1] & P[0] & C[0]) | G[2];
     assign C[4] =  G[3] | (P[3] & C[3]); // G[3] can generate a carry if a=b=1
