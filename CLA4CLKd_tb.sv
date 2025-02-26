@@ -36,7 +36,7 @@ module CLA4CLKd_tb;
     );
 
     initial begin              // Clock generation
-        clk = 0;
+        clk = 1;
         forever #5 clk = ~clk; // Generated a 10 ns clock period
     end
 

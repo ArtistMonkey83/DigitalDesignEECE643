@@ -69,7 +69,7 @@ module CLA4CLKd(
             cout <= 1'b0;                            // Initialize cout register to 0
         end else begin                               // End of reset state initialization
             c_out <= C[4];                           // Added line to use previous convention before CLK was added!
-            cout <= c_out;                           // This line will not execute correctly without c_out first acquiring computed value in C[4]!
+                                       // This line will not execute correctly without c_out first acquiring computed value in C[4]!
         end
     end
     
