@@ -21,17 +21,17 @@
 
 
 module divYR(
-    input logic clk,                    // 50/2 = 25.0
+    input logic clk,
     input logic reset,  
-    input logic [31:0] dividend_in,     // The number to be divided 50
-    input logic [31:0] divisor_in,      // The number doing the division 2
-    output logic [31:0] quotient_out,   // The whole number of the answer 25
-    output logic [31:0] remainder_out,  // The left over portion of the answer 0
+    input logic [31:0] dividend_in,
+    input logic [31:0] divisor_in,
+    output logic [31:0] quotient_out,
+    output logic [31:0] remainder_out,
     output logic ready
 );
 
-logic [31:0] dividend, divisor, quotient, remainder;
-logic [5:0] count;
+logic [63:0] dividend, divisor, quotient, remainder;
+logic [6:0] count;
 typedef enum logic [2:0] {
     RESET,
     SUBTRACT,
@@ -46,7 +46,7 @@ stateMachina_t current_state, next_state;
 always_ff @(posedge clk or posedge reset) begin
     if (reset) begin
         current_state <= RESET;
-    end else begin
+    end else begin            
         current_state <= next_state;
     end
 end
@@ -55,20 +55,20 @@ end
 always_comb begin
     case (current_state)
         RESET: begin
-            dividend = 0;
-            divisor = 0;
+            dividend = {32'b0, dividend_in}; // Properly initialize 64-bit registers
+            divisor = {32'b0, divisor_in};
             quotient = 0;
             remainder = 0;
             count = 0;
             next_state = SUBTRACT;
         end
         SUBTRACT: begin
-            remainder = remainder - divisor;
+            remainder = dividend - divisor;
             next_state = QSHIFT;
         end
         QSHIFT: begin
             if (remainder < 0) begin
-                remainder = divisor + remainder;
+                remainder = remainder + divisor;
                 quotient = quotient << 1;
             end else begin
                 quotient = (quotient << 1) | 1;
@@ -76,8 +76,8 @@ always_comb begin
             next_state = DSHIFT;
         end
         DSHIFT: begin
-            divisor = divisor >> 1;
-            if (++count == 32) next_state = DONE;
+            divisor >>= 1;
+            if (++count == 32) next_state = DONE; // Ensure count matches bit width being used
             else next_state = SUBTRACT;
         end
         DONE: begin
@@ -87,8 +87,7 @@ always_comb begin
     endcase
 end
 
-assign quotient_out = quotient;
-assign remainder_out = remainder;
-assign ready = (current_state == DONE);
+assign quotient_out = quotient[31:0];
+assign remainder_out = remainder[31:0];
 
 endmodule
