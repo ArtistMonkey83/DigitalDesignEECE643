@@ -3,7 +3,7 @@
 // Company: 
 // Engineer: 
 // 
-// Create Date: 03/08/2025 06:51:35 PM
+// Create Date: 03/08/2025 07:57:58 PM
 // Design Name: 
 // Module Name: divYR
 // Project Name: 
@@ -20,12 +20,13 @@
 //////////////////////////////////////////////////////////////////////////////////
 
 
-module divYR(  input logic clk,
-    input logic reset,
-    input logic [31:0] dividend_in,
-    input logic [31:0] divisor_in,
-    output logic [31:0] quotient_out,
-    output logic [31:0] remainder_out,
+module divYR(
+    input logic clk,                    // 50/2 = 25.0
+    input logic reset,  
+    input logic [31:0] dividend_in,     // The number to be divided 50
+    input logic [31:0] divisor_in,      // The number doing the division 2
+    output logic [31:0] quotient_out,   // The whole number of the answer 25
+    output logic [31:0] remainder_out,  // The left over portion of the answer 0
     output logic ready
 );
 
@@ -49,6 +50,7 @@ always_ff @(posedge clk or posedge reset) begin
         current_state <= next_state;
     end
 end
+
 // Combinational logic for next state and operations
 always_comb begin
     case (current_state)
@@ -68,9 +70,9 @@ always_comb begin
             if (remainder < 0) begin
                 remainder = divisor + remainder;
                 quotient = quotient << 1;
-            end 
-            else 
+            end else begin
                 quotient = (quotient << 1) | 1;
+            end
             next_state = DSHIFT;
         end
         DSHIFT: begin
@@ -89,3 +91,4 @@ assign quotient_out = quotient;
 assign remainder_out = remainder;
 assign ready = (current_state == DONE);
 
+endmodule
