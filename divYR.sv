@@ -55,7 +55,7 @@ always_comb begin               // Combinational logic for setting next_state va
     case (current_state)
         RESET: begin                         // Initializing registers to a known value
             dividend = {32'b0, dividend_in}; // Padding with zero 64-bit registers
-            divisor = {32'b0, divisor_in};
+            divisor = {divisor_in,32'b0};
             quotient = 0;
             remainder = 0;
             count = 0;                      // Initializing count to 0 for proper accumulation and bit tracking
@@ -87,6 +87,6 @@ always_comb begin               // Combinational logic for setting next_state va
 end                                               // Right Shift: take the 32 LSBs for remainder
                                                   // Left Shift: take the 32 MSBs for quotient
 assign quotient_out = quotient[63:32];            // Connect the internal quotient reg with output 
-assign remainder_out = remainder[63:32];          // Connect the internal remainder reg with output
+assign remainder_out = remainder[31:0];          // Connect the internal remainder reg with output
 
 endmodule
