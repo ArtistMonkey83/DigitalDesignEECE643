@@ -32,7 +32,7 @@ behavioral_model DUT (  // Instantiate the module under test
     
 always begin               // Clock generation
     clk = 1;
-     forever #5 clk = ~clk;  // Generate a clock with 10 time units period
+     forever #10 clk = ~clk;  // Generate a clock with 10 time units period
 end
 
 initial begin

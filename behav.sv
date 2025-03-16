@@ -55,9 +55,9 @@ always_comb
     
     endcase
 
-assign a = ~( c | b );
-assign b = ( a & b);
-assign c = ( a ^ (~b));
-assign y = ( a | b);
+//assign a = ~( c | b );
+//assign b = ( a & c);
+//assign c = ( a ^ (~b));
+assign y = (currentState == S0); //( a | b);
 
 endmodule
