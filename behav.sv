@@ -1,11 +1,11 @@
 `timescale 1ns / 1ps
 //////////////////////////////////////////////////////////////////////////////////
 // Company: California State University, Chico  
-// Engineer: Yolanda Reyes
+// Engineer: Yolanda Reyes #011234614
 // 
 // Create Date: 03/05/2025 12:02:37 AM
 // Design Name: 
-// Module Name: behav
+// Module Name: behav.sv
 // Project Name: Activity 3
 // Target Devices: 
 // Tool Versions: 
@@ -23,36 +23,23 @@
 module behavioral_model(
     input logic clk,        // Clock input
     input logic reset,      // Reset input
-    output logic a, b, c, y // Outputsfix abc
+    output logic y          // Outputs
 );
 
-typedef enum logic [2:0] {S0, S1, S2, S3, S4, S5, S6, S7, S8} statetype;
-statetype currentState, nextState;
+logic a, b, c;
 
-// Sequential logic to handle feedback among a, b, and c
-always_ff @(posedge clk or posedge reset) begin
-    if (reset) begin
-        currentState <= S1;
+always_ff @(posedge clk) begin
+    if (reset)begin
+        a <= 0;
+        b <= 0;
+        c <= 0;
     end else begin
-        currentState <= nextState;
+    a <= ~( c | b );
+    b <= ( a & b);
+    c <= ( a ~^ (~b));
     end
 end
 
-always_comb begin       
-    case(currentState)
-        S1: nextState = S5;
-        S2: nextState = S3;
-        S3: nextState = S2;
-        S4: nextState = S4;
-        S5: nextState = S8;
-        S6: nextState = S4;
-        S7: nextState = S3;
-        S8: nextState = S3;
-        default: nextState = S1;
-    endcase
-    
-    assign y = (currentState == S8 | currentState == S7);
-    assign {a, b, c} = {currentState[2], currentState[1], currentState[0]};
-end
+assign     y = ( a | b);
 
 endmodule
