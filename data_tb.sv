@@ -40,7 +40,7 @@
 //////////////////////////////////////////////////////////////////////////////////
 
 
-module testbench;           // Testbench signals
+module dataflow_model_tb;           // Testbench signals
     logic clk, reset;
     logic y;
 

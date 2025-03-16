@@ -25,14 +25,14 @@ module dataflow_model(
     output logic y
 );
 
-logic a, b, c;          // Internal signals
+logic a, b, c, S;          // Internal signals
 
 assign S = a | b;
 assign y = S;
 
-flipFlop ffA(clk,reset,~c,~b);
-flipFlop ffB(clk,reset,a,c);
-flipFlop ffC(clk,reset,a,~b);
+flipFlop ffA(.clk(clk), .reset(reset), .d(~( c | b)), .q(a));
+flipFlop ffB(.clk(clk), .reset(reset), .d( a & b), .q(b));
+flipFlop ffC(.clk(clk), .reset(reset), .d(a ~^ (~b)), .q(c));
 
 endmodule
 
@@ -51,3 +51,4 @@ always_ff @(posedge clk or posedge reset)begin
     end
 end
 
+endmodule
