@@ -52,12 +52,8 @@ always_comb
         S6:  nextState = S2;
         S7:  nextState = S2;
         default: nextState = S0;
-    
     endcase
 
-//assign a = ~( c | b );
-//assign b = ( a & c);
-//assign c = ( a ^ (~b));
-assign y = (currentState == S0); //( a | b);
+assign y = (currentState == S0); 
 
 endmodule

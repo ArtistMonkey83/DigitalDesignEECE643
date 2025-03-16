@@ -24,22 +24,22 @@ module testbench;           // Testbench signals
     logic clk, reset;
     logic y;
 
-behavioral_model DUT (  // Instantiate the module under test
+behavioral_model DUT (      // Instantiate the behavioral module under test
     .clk(clk),
     .reset(reset),
     .y(y)
 );
     
-always begin               // Clock generation
+always begin                // Clock generation
     clk = 1;
-     forever #10 clk = ~clk;  // Generate a clock with 10 time units period
+    forever #10 clk = ~clk;// Generate a clock with 10 time units period
 end
 
-initial begin
-    reset = 1; 
-    #10;
-    reset = 0;
-    #10;
-    #83;
+initial begin               // Start the testing
+    reset = 1;              // Initializing at reset
+    #10;                    // Waiting for some time to pass
+    reset = 0;              // (┛◉Д◉)┛彡┻━┻
+    #10;                    // Wait for some time to pass
+    #83;                    // Let it run for a while
 end
 endmodule
