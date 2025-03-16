@@ -20,22 +20,34 @@
 //////////////////////////////////////////////////////////////////////////////////
 
 module dataflow_model(
-    input logic clk,     // Although unused, kept for interface consistency
-    input logic reset,   // Same as above
+    input logic clk,     
+    input logic reset,   
     output logic y
 );
 
-    // Define internal signals, if needed
-    logic a, b, c;
-    logic notA, notB, notC
+logic a, b, c;          // Internal signals
 
-    // Logic expressions using dataflow modeling
-    assign a = ~(c | b);        // Equivalent to NOR gate
-    assign notA = ~a;          // Equivalent to NOT gate
-    assign notC = ~c;          // Equivalent to NOT gate
-    assign b = ~(notA & notC);  // Equivalent to NAND gate
-    assign notB = ~b;          // Equivalent to NOT gate
-    assign c = ~(a ^ notB);    // Equivalent to XNOR gate
-    assign y = ~(notB & notA);  // Equivalent to NOR gate
+assign S = a | b;
+assign y = S;
+
+flipFlop ffA(clk,reset,~c,~b);
+flipFlop ffB(clk,reset,a,c);
+flipFlop ffC(clk,reset,a,~b);
 
 endmodule
+
+module flipFlop( 
+    input logic clk,
+    input logic reset,
+    input logic d,
+    output logic q
+);
+
+always_ff @(posedge clk or posedge reset)begin
+    if(reset)begin
+        q <= 1'b0;
+    end else begin
+        q <= d;
+    end
+end
+

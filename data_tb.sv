@@ -23,7 +23,7 @@
 // Company: California State University, Chioo
 // Engineer: Yolanda Reyes #011234614
 // 
-// Create Date: 03/05/2025 02:24:29 AM
+// Create Date: 03/05/2025 12:24:29 PM
 // Design Name: 
 // Module Name: behav_tb.sv
 // Project Name: Activity 3
@@ -44,7 +44,7 @@ module testbench;           // Testbench signals
     logic clk, reset;
     logic y;
 
-behavioral_model DUT (      // Instantiate the behavioral module under test
+dataflow_model DUT (      // Instantiate the behavioral module under test
     .clk(clk),
     .reset(reset),
     .y(y)
