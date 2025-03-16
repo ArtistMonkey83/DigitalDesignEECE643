@@ -28,15 +28,15 @@ module behavioral_model(
 
 logic a, b, c;
 
-always_ff @(posedge clk) begin
+always_ff @(posedge clk or posedge reset) begin
     if (reset)begin
         a <= 0;
         b <= 0;
         c <= 0;
     end else begin
-    a <= ~( c | b );
-    b <= ( a & b);
-    c <= ( a ~^ (~b));
+        a <= ~( c | b );
+        b <= ( a & b);
+        c <= ( a ^ (~b));
     end
 end
 

@@ -21,16 +21,25 @@
 
 
 module testbench;           // Testbench signals
-    logic clk;
+    logic clk, reset;
     logic y;
 
 behavioral_model DUT (  // Instantiate the module under test
     .clk(clk),
+    .reset(reset),
     .y(y)
 );
     
 always begin               // Clock generation
     clk = 1;
      forever #5 clk = ~clk;  // Generate a clock with 10 time units period
+end
+
+initial begin
+    reset = 1; 
+    #10;
+    reset = 0;
+    #10;
+    #83;
 end
 endmodule
