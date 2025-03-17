@@ -19,20 +19,20 @@
 // 
 //////////////////////////////////////////////////////////////////////////////////
 
-module dataflow_model(
+module structural_model(
     input logic clk,     
     input logic reset,   
     output logic y
 );
 
-logic a, b, c, S;          // Internal signals
+logic a, b, c, S0, S1, S2;          // Internal signals
 
-assign S = a | b;
-assign y = S;
+flipFlop ffA(.clk(clk), .reset(reset), .d(~( S1 | S2)), .q((~S0)));
+flipFlop ffB(.clk(clk), .reset(reset), .d( S0 & S2), .q(S1));
+flipFlop ffC(.clk(clk), .reset(reset), .d(S0 ~^ (~S1)), .q(S2));
 
-flipFlop ffA(.clk(clk), .reset(reset), .d(~( c | b)), .q(a));
-flipFlop ffB(.clk(clk), .reset(reset), .d( a & b), .q(b));
-flipFlop ffC(.clk(clk), .reset(reset), .d(a ~^ (~b)), .q(c));
+assign {a, b, c} = {S0, S1, S2};
+assign y = (S0 | S1);
 
 endmodule
 
@@ -40,15 +40,22 @@ module flipFlop(
     input logic clk,
     input logic reset,
     input logic d,
-    output logic q
+    output logic q,
+    output logic qNot
 );
+
+logic temp;
 
 always_ff @(posedge clk or posedge reset)begin
     if(reset)begin
-        q <= 1'b0;
+        temp <= 1'b0;
     end else begin
-        q <= d;
+        temp <= d;
     end
 end
+
+assign q = temp;
+assign qNot = ~temp;
+
 
 endmodule

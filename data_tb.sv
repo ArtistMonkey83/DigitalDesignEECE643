@@ -18,33 +18,14 @@
 // Additional Comments:
 // 
 //////////////////////////////////////////////////////////////////////////////////
-`timescale 1ns / 1ps
-//////////////////////////////////////////////////////////////////////////////////
-// Company: California State University, Chioo
-// Engineer: Yolanda Reyes #011234614
-// 
-// Create Date: 03/05/2025 12:24:29 PM
-// Design Name: 
-// Module Name: behav_tb.sv
-// Project Name: Activity 3
-// Target Devices: 
-// Tool Versions: 
-// Description: 
-// 
-// Dependencies: 
-// 
-// Revision:
-// Revision 0.01 - File Created
-// Additional Comments:
-// 
-//////////////////////////////////////////////////////////////////////////////////
 
 
-module dataflow_model_tb;           // Testbench signals
+
+module structural_model_tb;           // Testbench signals
     logic clk, reset;
     logic y;
 
-dataflow_model DUT (      // Instantiate the behavioral module under test
+structural_model DUT (      // Instantiate the behavioral module under test
     .clk(clk),
     .reset(reset),
     .y(y)
