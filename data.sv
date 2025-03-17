@@ -25,14 +25,14 @@ module structural_model(
     output logic y
 );
 
-logic a, b, c, S0, S1, S2;          // Internal signals
+logic  a, b, c, S0, S1, S2, S0Not, S1Not, S2Not;          // Internal signals
 
-flipFlop ffA(.clk(clk), .reset(reset), .d(~( S1 | S2)), .q((~S0)));
-flipFlop ffB(.clk(clk), .reset(reset), .d( S0 & S2), .q(S1));
-flipFlop ffC(.clk(clk), .reset(reset), .d(S0 ~^ (~S1)), .q(S2));
+flipFlop ffA(.clk(clk), .reset(reset), .d(~( S1 | S2)), .q((S0)), .qNot(S0Not));
+flipFlop ffB(.clk(clk), .reset(reset), .d( ~(S0Not & S2Not)), .q(S1), .qNot(S1Not));
+flipFlop ffC(.clk(clk), .reset(reset), .d(~(S0 ^ S1Not)), .q(S2), .qNot(S2Not));
 
 assign {a, b, c} = {S0, S1, S2};
-assign y = (S0 | S1);
+assign y = ~(S0Not | S1Not);
 
 endmodule
 
