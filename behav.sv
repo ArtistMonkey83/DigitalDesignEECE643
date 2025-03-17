@@ -27,15 +27,16 @@ module behavioral_model(
 );
 
 logic a, b, c;
-typedef enum logic [3:0] {S0, S1, S2, S3, S4, S5, S6, S7} statetype;
+typedef enum logic [2:0] {S0, S1, S2, S3, S4, S5, S6, S7} statetype;
 
 statetype currentState, nextState;
 
 always_ff @(posedge clk or posedge reset) begin
     if (reset)begin
-        a <= 0;
-        b <= 0;
-        c <= 0;
+        currentState <= S0;
+//        a <= 0;
+//        b <= 0;
+//        c <= 0;
     end else begin
         currentState <= nextState;
     end
@@ -55,5 +56,5 @@ always_comb
     endcase
 
 assign y = (currentState == S0); 
-
+assign {a, b, c} = {currentState[0], currentState[1], currentState[2]};
 endmodule
