@@ -75,8 +75,9 @@ module activ4a_tb;
         #10;
         
         for(i=0 ; i < $size(test_vectors); i++)begin
+            #10
             x = test_vectors[i].x;
-            #20;
+            #10;
             if ((y!= test_vectors[i].y) || (dut.currentState != test_vectors[i].cState))begin
                 $display("Test %0d failed: Expected State: S%0d, Returned State: S%d, Expected Y: %0d, Returned Y: %0d", i, test_vectors[i].cState, currentState,test_vectors[i].y, y);
             end else begin

@@ -50,6 +50,7 @@ always_comb
         S7: nextState_in = (x == 0) ? S6 : S0;
         default: nextState_in = S0;
     endcase
+    
 assign y = (currentState_in == S0);
 assign currentState = currentState_in;
 assign nextState = nextState_in;
