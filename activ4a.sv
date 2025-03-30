@@ -32,24 +32,26 @@ module activ4a(
 );
 
 typedef enum logic [2:0] {S0, S1, S2, S3, S4, S5, S6, S7} statetype;
-statetype currentState, nextState;
+statetype currentState_in, nextState_in;
 
 always_ff @(posedge clk, posedge reset)
-    if(reset) currentState <= S0;
-    else currentState <= nextState;
+    if(reset) currentState_in <= S0;
+    else currentState_in <= nextState_in;
 
 always_comb
     case(currentState)
-        S0: nextState = (x == 0) ? S5 : S1;
-        S1: nextState = (x == 0) ? S3 : S2;
-        S2: nextState = (x == 0) ? S5 : S4;
-        S3: nextState = (x == 0) ? S3 : S2; 
-        S4: nextState = (x == 0) ? S3 : S2;
-        S5: nextState = (x == 0) ? S5 : S1;
-        S6: nextState = (x == 0) ? S6 : S7;
-        S7: nextState = (x == 0) ? S6 : S0;
-        default: nextState = S0;
+        S0: nextState_in = (x == 0) ? S5 : S1;
+        S1: nextState_in = (x == 0) ? S3 : S2;
+        S2: nextState_in = (x == 0) ? S5 : S4;
+        S3: nextState_in = (x == 0) ? S3 : S2; 
+        S4: nextState_in = (x == 0) ? S3 : S2;
+        S5: nextState_in = (x == 0) ? S5 : S1;
+        S6: nextState_in = (x == 0) ? S6 : S7;
+        S7: nextState_in = (x == 0) ? S6 : S0;
+        default: nextState_in = S0;
     endcase
-assign y = (currentState == S0);
+assign y = (currentState_in == S0);
+assign currentState = currentState_in;
+assign nextState = nextState_in;
         
 endmodule
