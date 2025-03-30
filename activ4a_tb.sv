@@ -27,17 +27,20 @@ module activ4a_tb;
         .clk(clk),
         .reset(reset),
         .x(x),
-        .y(y)
+        .y(y),
+        .currentState(currentState),
+        .nextState(nextState)
     );
     
     initial begin clk = 1'b0;
     forever #10 clk = ~clk; end
     
     typedef struct packed{
-    logic x, y, cState, nState;
+    logic x, y;
+    logic [2:0] cState, nState;
     }test_vector_t;
     
-    test_vector test_vectors[] = {  // x, y, currentState, nextState
+    test_vector_t test_vectors[] = {  // x, y, currentState, nextState
                                     {1'b0, 1'b0,3'b000,3'b101}, // S0 with x == 0 ∴ y == 0 & nextState == S5 
                                     {1'b0, 1'b0,3'b001,3'b011}, // S1 with x == 0 ∴ y == 0 & nextState == S3 
                                     {1'b0, 1'b0,3'b010,3'b101}, // S2 with x == 0 ∴ y == 0 & nextState == S5 
@@ -66,10 +69,11 @@ module activ4a_tb;
         
         for(i=0 ; i < $size(test_vectors); i++)begin
             x = test_vectors[i].x;
+            #13;
             if ((y!= test_vectors[i].y) || (dut.currentState != test_vectors[i].cState))begin
-                $display("Test %d failed: Expected State: S%d, Returned State: S%d, Expected Y: %d, Returned Y: %d", i, test_vectors[i].cState, dut.currentState[i],test_vectors[i].y, y);
+                $display("Test %0d failed: Expected State: S%0d, Returned State: S%d, Expected Y: %0d, Returned Y: %0d", i, test_vectors[i].cState, dut.currentState[i],test_vectors[i].y, y);
             end else begin
-                $display("Test%d passed.!",i);
+                $display("Test%0d passed.!",i);
             end
         end
     end

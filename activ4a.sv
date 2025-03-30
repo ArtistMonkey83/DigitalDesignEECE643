@@ -19,13 +19,16 @@
 // Additional Comments:
 // 
 //////////////////////////////////////////////////////////////////////////////////
-
+//typedef enum logic [2:0] {S0, S1, S2, S3, S4, S5, S6, S7} statetype;
+//statetype currentState, nextState;
 
 module activ4a(
     input logic clk,
     input logic reset,
     input logic  x,
-    output logic y
+    output logic y,
+    output logic[2:0] currentState,
+    output logic [2:0] nextState
 );
 
 typedef enum logic [2:0] {S0, S1, S2, S3, S4, S5, S6, S7} statetype;
