@@ -50,7 +50,20 @@ always_comb
         S7: nextState_in = (x == 0) ? S6 : S0;
         default: nextState_in = S0;
     endcase
-    
+
+always_comb
+    case(currentState)
+        S0: y = (x == 0) ? 1'b0 : 1'b0;
+        S1: y = (x == 0) ? 1'b0 : 1'b0;
+        S2: y = (x == 0) ? 1'b0 : 1'b0;
+        S3: y = (x == 0) ? 1'b1 : 1'b0; 
+        S4: y = (x == 0) ? 1'b0 : 1'b0;
+        S5: y = (x == 0) ? 1'b1 : 1'b1;
+        S6: y = (x == 0) ? 1'b0 : 1'b1;
+        S7: y = (x == 0) ? 1'b1 : 1'b0;
+        default: nextState_in = S0;
+    endcase
+        
 assign y = (currentState_in == S0);
 assign currentState = currentState_in;
 assign nextState = nextState_in;

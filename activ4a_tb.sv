@@ -65,7 +65,10 @@ module activ4a_tb;
                                     
                                     {1'b0, 1'b1,3'b111,3'b110}, // S7 with x == 0 ∴ y == 1 & nextState == S6           
                                     {1'b1, 1'b0,3'b111,3'b000}  // S7 with x == 1 ∴ y == 0 & nextState == S0  
-                                 };                               
+                                 };  
+    always_ff @(posedge clk, posedge reset)begin
+        if(reset) x <= a'b0;
+        else x <= y;                             
     integer i;
     
     initial begin
