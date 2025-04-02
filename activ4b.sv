@@ -65,7 +65,7 @@ always_comb
                  end
     endcase
     
-//assign y = (currentState_in == S0);
+assign y = (currentState_in == S0);
 assign currentState = currentState_in;
 assign nextState = nextState_in;
         
