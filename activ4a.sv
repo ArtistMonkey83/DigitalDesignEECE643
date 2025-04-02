@@ -40,28 +40,42 @@ always_ff @(posedge clk, posedge reset)
 
 always_comb
     case(currentState)
-        S0: nextState_in = (x == 0) ? S5 : S1;
-        S1: nextState_in = (x == 0) ? S3 : S2;
-        S2: nextState_in = (x == 0) ? S5 : S4;
-        S3: nextState_in = (x == 0) ? S6 : S0; 
-        S4: nextState_in = (x == 0) ? S3 : S2;
-        S5: nextState_in = (x == 0) ? S5 : S1;
-        S6: nextState_in = (x == 0) ? S6 : S7;
-        S7: nextState_in = (x == 0) ? S6 : S0;
-        default: nextState_in = S0;
-    endcase
-
-always_comb
-    case(currentState)
-        S0: y = (x == 0) ? 1'b0 : 1'b0;
-        S1: y = (x == 0) ? 1'b0 : 1'b0;
-        S2: y = (x == 0) ? 1'b0 : 1'b0;
-        S3: y = (x == 0) ? 1'b1 : 1'b0; 
-        S4: y = (x == 0) ? 1'b0 : 1'b0;
-        S5: y = (x == 0) ? 1'b1 : 1'b1;
-        S6: y = (x == 0) ? 1'b0 : 1'b1;
-        S7: y = (x == 0) ? 1'b1 : 1'b0;
-        default: y = 1'b0;
+        S0: begin
+            nextState_in = (x == 0) ? S5 : S1;
+            y = (x == 0) ? 1'b0 : 1'b0;
+            end 
+        S1: begin
+            nextState_in = (x == 0) ? S3 : S2;
+            y = (x == 0) ? 1'b0 : 1'b0;
+            end
+        S2: begin
+            nextState_in = (x == 0) ? S5 : S4;
+            y = (x == 0) ? 1'b0 : 1'b0;
+            end
+        S3: begin
+            nextState_in = (x == 0) ? S6 : S0; 
+            y = (x == 0) ? 1'b1 : 1'b0;
+            end
+        S4: begin
+            nextState_in = (x == 0) ? S3 : S2;
+            y = (x == 0) ? 1'b0 : 1'b0;
+            end
+        S5: begin
+            nextState_in = (x == 0) ? S5 : S1;
+            y = (x == 0) ? 1'b1 : 1'b1;
+            end
+        S6: begin
+            nextState_in = (x == 0) ? S6 : S7;
+            y = (x == 0) ? 1'b0 : 1'b1;
+            end
+        S7: begin
+            nextState_in = (x == 0) ? S6 : S0;
+            y = (x == 0) ? 1'b1 : 1'b0;
+            end
+        default: begin
+                 nextState_in = S0;
+                 y = 1'b0;
+                 end
     endcase
         
 assign y = (currentState_in == S0);
