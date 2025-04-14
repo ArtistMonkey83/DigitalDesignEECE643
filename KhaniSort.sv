@@ -1,4 +1,4 @@
-module KhaniSort #(
+module custom_sort #(
     parameter int N = 6,
     parameter int WIDTH = 8
 )(
@@ -9,22 +9,26 @@ module KhaniSort #(
     typedef int signed_weight_t;
     signed_weight_t weight[N];
     signed_weight_t norm_weight[N];
-    int final_pos[N];
-    int write_count[N];  // overwrite tracker
-    logic [WIDTH-1:0] strip_temp[N];
-    int i, j;
+    int position[N];
+    int used[N];
+    logic [WIDTH-1:0] strip[N];
+    logic [WIDTH-1:0] overwrite_list[N];
+    int overwrite_count;
+    int i, j, pos;
 
     always_comb begin
-        // Step 1: init
+        // Step 0: Clear all
         for (i = 0; i < N; i++) begin
-            weight[i]      = 0;
-            norm_weight[i] = 0;
-            final_pos[i]   = 0;
-            write_count[i] = 0;
-            strip_temp[i]  = '0;
+            weight[i]         = 0;
+            norm_weight[i]    = 0;
+            position[i]       = 0;
+            used[i]           = 0;
+            strip[i]          = '0;
+            overwrite_list[i] = '0;
         end
+        overwrite_count = 0;
 
-        // Step 2: compute weights
+        // Step 1: Weight calculation
         for (i = 0; i < N; i++) begin
             for (j = 0; j < N; j++) begin
                 if (i != j) begin
@@ -36,46 +40,7 @@ module KhaniSort #(
             end
         end
 
-        // Step 3: normalize weights (ceil/floor)
+        // Step 2: Normalize weights
         for (i = 0; i < N; i++) begin
             if (weight[i] >= 0)
-                norm_weight[i] = (weight[i] + 1) >>> 1; // ceil
-            else
-                norm_weight[i] = weight[i] >>> 1;        // floor
-        end
-
-        // Step 4: write to strip
-        int placed = 0;
-        for (i = 0; i < N; i++) begin
-            int pos = (N / 2) + norm_weight[i];
-            if (pos < 0) pos = 0;
-            if (pos >= N) pos = N - 1;
-
-            // If slot taken, shift right to next free
-            while (pos < N && write_count[pos] != 0)
-                pos++;
-
-            if (pos < N) begin
-                strip_temp[pos] = data_in[i];
-                write_count[pos]++;
-            end else begin
-                // If no slot, start from left and find first free
-                for (j = 0; j < N; j++) begin
-                    if (write_count[j] == 0) begin
-                        strip_temp[j] = data_in[i];
-                        write_count[j]++;
-                        break;
-                    end
-                end
-            end
-        end
-
-        // Step 5: Copy to output
-        for (i = 0; i < N; i++) begin
-            data_sorted[i] = strip_temp[i];
-        end
-    end
-
-endmodule
-
-  
+                norm_weight[i] = (weight[i]_
