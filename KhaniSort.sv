@@ -1,4 +1,4 @@
-// FSM-based custom sort module with memory-based strip
+// FSM-based custom sort module with memory-based strip and edge-triggered start
 module fsm_sort #(parameter N = 6, parameter WIDTH = 8)(
     input  logic clk,
     input  logic rst,
@@ -10,6 +10,7 @@ module fsm_sort #(parameter N = 6, parameter WIDTH = 8)(
 
     typedef enum logic [2:0] {
         IDLE,
+        INIT,
         CALC_WEIGHT,
         NORM_WEIGHT,
         PLACE_STRIP,
@@ -24,10 +25,18 @@ module fsm_sort #(parameter N = 6, parameter WIDTH = 8)(
     logic signed [WIDTH:0] weight[N];
     logic signed [WIDTH:0] norm_weight[N];
     logic [$clog2(N)-1:0] position[N];
-    logic [WIDTH-1:0] strip [0:N-1][0:N-1]; // memory-based strip (each slot stores list)
-    logic [2:0] strip_count [0:N-1];        // count of values per strip slot
-    logic [WIDTH-1:0] temp_out [0:N-1];     // final output array
+    logic [WIDTH-1:0] strip [0:N-1][0:N-1];
+    logic [2:0] strip_count [0:N-1];
+    logic [WIDTH-1:0] temp_out [0:N-1];
     logic [$clog2(N*N):0] out_ptr;
+
+    // Start pulse detector
+    logic start_d, start_rising;
+    always_ff @(posedge clk or posedge rst) begin
+        if (rst) start_d <= 0;
+        else     start_d <= start;
+    end
+    assign start_rising = start & ~start_d;
 
     // FSM
     always_ff @(posedge clk or posedge rst) begin
@@ -37,7 +46,8 @@ module fsm_sort #(parameter N = 6, parameter WIDTH = 8)(
 
     always_comb begin
         case (state)
-            IDLE:         next_state = (start) ? CALC_WEIGHT : IDLE;
+            IDLE:         next_state = (start_rising) ? INIT : IDLE;
+            INIT:         next_state = CALC_WEIGHT;
             CALC_WEIGHT:  next_state = NORM_WEIGHT;
             NORM_WEIGHT:  next_state = PLACE_STRIP;
             PLACE_STRIP:  next_state = COPY_OUTPUT;
@@ -47,25 +57,42 @@ module fsm_sort #(parameter N = 6, parameter WIDTH = 8)(
         endcase
     end
 
-    // Registers
     always_ff @(posedge clk or posedge rst) begin
         if (rst) begin
             for (i = 0; i < N; i++) begin
+                data_sorted[i] <= '0;
                 weight[i] <= 0;
                 norm_weight[i] <= 0;
                 position[i] <= 0;
                 strip_count[i] <= 0;
+                temp_out[i] <= '0;
                 for (j = 0; j < N; j++) begin
                     strip[i][j] <= '0;
                 end
-                temp_out[i] <= '0;
-                data_sorted[i] <= '0;
             end
             out_ptr <= 0;
             done <= 0;
-        end
-        else begin
+        end else begin
             case (state)
+                IDLE: begin
+                    done <= 0;
+                end
+
+                INIT: begin
+                    for (i = 0; i < N; i++) begin
+                        weight[i] <= 0;
+                        norm_weight[i] <= 0;
+                        position[i] <= 0;
+                        strip_count[i] <= 0;
+                        temp_out[i] <= '0;
+                        data_sorted[i] <= '0;
+                        for (j = 0; j < N; j++) begin
+                            strip[i][j] <= '0;
+                        end
+                    end
+                    out_ptr <= 0;
+                end
+
                 CALC_WEIGHT: begin
                     for (i = 0; i < N; i++) begin
                         weight[i] = 0;
@@ -84,6 +111,7 @@ module fsm_sort #(parameter N = 6, parameter WIDTH = 8)(
                             norm_weight[i] = (weight[i] + 1) >>> 1;
                         else
                             norm_weight[i] = weight[i] >>> 1;
+
                         position[i] = N/2 + norm_weight[i];
                         if (position[i] < 0) position[i] = 0;
                         if (position[i] >= N) position[i] = N - 1;
@@ -109,26 +137,12 @@ module fsm_sort #(parameter N = 6, parameter WIDTH = 8)(
                     for (i = 0; i < N; i++) begin
                         data_sorted[i] <= temp_out[i];
                     end
-                    // Clear strip and counts for next run
-                    for (i = 0; i < N; i++) begin
-                        strip_count[i] <= 0;
-                        for (j = 0; j < N; j++) begin
-                            strip[i][j] <= '0;
-                        end
-                    end
                 end
 
                 DONE: begin
                     done <= 1;
                 end
-
-                default: begin
-                    done <= 0;
-                end
             endcase
         end
     end
 endmodule
-
-
-  
