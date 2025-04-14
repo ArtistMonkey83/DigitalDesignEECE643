@@ -102,20 +102,43 @@ module fsm_sort #(
                             weight_div2[i] = weight[i] >>> 1;
                     end
                 end
-
+                
                 PLACE_STRIP: begin
-                    for (i = 0; i < N; i++) begin
-                        pos = (N >> 1) + weight_div2[i];
-                        if (pos < 0) pos = 0;
-                        else if (pos >= N) pos = N - 1;
+                     for (i = 0; i < N; i++) begin
+                             pos = (N >> 1) + weight_div2[i];
+                             if (pos < 0) pos = 0;
+                             else if (pos >= N) pos = N - 1;
 
-                        while (strip_count[pos] != 0 && pos < N - 1)
-                            pos++;
+        // Find correct placement considering ordering
+           int insert_pos = pos;
 
-                        strip[pos][strip_count[pos]] = data_in[i];
-                        strip_count[pos]++;
-                    end
-                end
+        // Move right if new number is greater
+        while (insert_pos < N && strip_count[insert_pos] != 0 && data_in[i] > strip[insert_pos][0]) 
+            insert_pos++;
+
+        // Move left if new number is smaller or equal
+        while (insert_pos > 0 && strip_count[insert_pos] != 0 && data_in[i] <= strip[insert_pos][0]) 
+            insert_pos--;
+
+        // If landed on occupied position after move left, shift larger elements right
+        if (strip_count[insert_pos] != 0 && data_in[i] <= strip[insert_pos][0]) begin
+            int shift_pos = insert_pos;
+            // Find right-most free slot
+            while (shift_pos < N && strip_count[shift_pos] != 0) shift_pos++;
+            // Shift elements rightward
+            for (int k = shift_pos; k > insert_pos; k--) begin
+                strip[k][0] = strip[k-1][0];
+                strip_count[k] = strip_count[k-1];
+            end
+            strip_count[insert_pos] = 0; // make space
+        end
+
+        // Place the number correctly
+        strip[insert_pos][0] = data_in[i];
+        strip_count[insert_pos] = 1;
+    end
+end
+
 
                 COPY_OUTPUT: begin
                     out_ptr = 0;
