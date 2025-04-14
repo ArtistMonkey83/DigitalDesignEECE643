@@ -15,6 +15,7 @@ module fsm_sort #(parameter N = 6, parameter WIDTH = 8)(
         NORM_WEIGHT,
         PLACE_STRIP,
         COPY_OUTPUT,
+        WRITE_BACK,
         DONE
     } state_t;
 
@@ -51,7 +52,8 @@ module fsm_sort #(parameter N = 6, parameter WIDTH = 8)(
             CALC_WEIGHT:  next_state = NORM_WEIGHT;
             NORM_WEIGHT:  next_state = PLACE_STRIP;
             PLACE_STRIP:  next_state = COPY_OUTPUT;
-            COPY_OUTPUT:  next_state = DONE;
+            COPY_OUTPUT:  next_state = WRITE_BACK;
+            WRITE_BACK:   next_state = DONE;
             DONE:         next_state = IDLE;
             default:      next_state = IDLE;
         endcase
@@ -134,6 +136,9 @@ module fsm_sort #(parameter N = 6, parameter WIDTH = 8)(
                             out_ptr++;
                         end
                     end
+                end
+
+                WRITE_BACK: begin
                     for (i = 0; i < N; i++) begin
                         data_sorted[i] <= temp_out[i];
                     end
