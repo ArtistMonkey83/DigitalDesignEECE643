@@ -43,4 +43,43 @@ module custom_sort #(
         // Step 2: Normalize weights
         for (i = 0; i < N; i++) begin
             if (weight[i] >= 0)
-                norm_weight[i] = (weight[i]_
+                norm_weight[i] = (weight[i] + 1) >>> 1; // ceil
+            else
+                norm_weight[i] = weight[i] >>> 1;        // floor
+            position[i] = norm_weight[i] + (N >> 1);     // origin = N/2
+            if (position[i] < 0)
+                position[i] = 0;
+            else if (position[i] >= N)
+                position[i] = N - 1;
+        end
+
+        // Step 3: Write to strip and collect overwrites
+        for (i = 0; i < N; i++) begin
+            pos = position[i];
+            if (used[pos] == 0) begin
+                strip[pos] = data_in[i];
+                used[pos] = 1;
+            end else begin
+                // Overwrite: keep existing, add this to overwrite list
+                overwrite_list[overwrite_count] = data_in[i];
+                overwrite_count++;
+            end
+        end
+
+        // Step 4: Output sorted result (strip + overwrites)
+        int out_idx = 0;
+        for (i = 0; i < N; i++) begin
+            if (used[i]) begin
+                data_sorted[out_idx] = strip[i];
+                out_idx++;
+            end
+        end
+        for (i = 0; i < overwrite_count; i++) begin
+            if (out_idx < N) begin
+                data_sorted[out_idx] = overwrite_list[i];
+                out_idx++;
+            end
+        end
+    end
+endmodule
+
