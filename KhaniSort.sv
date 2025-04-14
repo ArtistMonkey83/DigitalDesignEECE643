@@ -1,71 +1,121 @@
-module custom_sort #(
-    parameter int N = 6,
-    parameter int WIDTH = 8
-)(
+// FSM-based custom sort module with memory-based strip
+module fsm_sort #(parameter N = 6, parameter WIDTH = 8)(
+    input  logic clk,
+    input  logic rst,
+    input  logic start,
     input  logic [WIDTH-1:0] data_in[N],
+    output logic done,
     output logic [WIDTH-1:0] data_sorted[N]
 );
 
-    typedef int signed_weight_t;
+    typedef enum logic [2:0] {
+        IDLE,
+        CALC_WEIGHT,
+        NORM_WEIGHT,
+        PLACE_STRIP,
+        COPY_OUTPUT,
+        DONE
+    } state_t;
 
-    signed_weight_t weight[N];
-    signed_weight_t adjusted[N];
-    int             position[N];
-    int i, j, pos, idx;
+    state_t state, next_state;
 
-    // 2D strip: each index holds up to N values
-    logic [WIDTH-1:0] strip[N][N];
-    int strip_count[N];
+    int i, j;
+    logic [$clog2(N)-1:0] idx;
+    logic signed [WIDTH:0] weight[N];
+    logic signed [WIDTH:0] norm_weight[N];
+    logic [$clog2(N)-1:0] position[N];
+    logic [WIDTH-1:0] strip [0:N-1][0:N-1]; // memory-based strip (each slot stores list)
+    logic [2:0] strip_count [0:N-1];        // count of values per strip slot
+    logic [WIDTH-1:0] temp_out [0:N-1];     // final output array
+    logic [$clog2(N*N):0] out_ptr;
 
-    always_comb begin
-        // Init all
-        for (i = 0; i < N; i++) begin
-            weight[i] = 0;
-            adjusted[i] = 0;
-            position[i] = 0;
-            strip_count[i] = 0;
-            for (j = 0; j < N; j++) begin
-                strip[i][j] = '0;
-            end
-        end
-
-        // Step 1: Compute weights
-        for (i = 0; i < N; i++) begin
-            for (j = 0; j < N; j++) begin
-                if (data_in[i] < data_in[j])
-                    weight[i] -= 1;
-                else if (data_in[i] > data_in[j])
-                    weight[i] += 1;
-            end
-        end
-
-        // Step 2: Normalize weights
-        for (i = 0; i < N; i++) begin
-            if (weight[i] >= 0)
-                adjusted[i] = (weight[i] + 1) >>> 1; // ceil
-            else
-                adjusted[i] = weight[i] >>> 1;        // floor
-        end
-
-        // Step 3: Map to position and insert into strip
-        for (i = 0; i < N; i++) begin
-            pos = (N >> 1) + adjusted[i]; // origin-centered
-            if (pos < 0) pos = 0;
-            if (pos >= N) pos = N - 1;
-
-            idx = strip_count[pos];
-            strip[pos][idx] = data_in[i];
-            strip_count[pos]++;
-        end
-
-        // Step 4: Flatten strip left-to-right into sorted output
-        int out_idx = 0;
-        for (i = 0; i < N; i++) begin
-            for (j = 0; j < strip_count[i]; j++) begin
-                data_sorted[out_idx] = strip[i][j];
-                out_idx++;
-            end
-        end
+    // FSM
+    always_ff @(posedge clk or posedge rst) begin
+        if (rst) state <= IDLE;
+        else state <= next_state;
     end
 
+    always_comb begin
+        case (state)
+            IDLE:         next_state = (start) ? CALC_WEIGHT : IDLE;
+            CALC_WEIGHT:  next_state = NORM_WEIGHT;
+            NORM_WEIGHT:  next_state = PLACE_STRIP;
+            PLACE_STRIP:  next_state = COPY_OUTPUT;
+            COPY_OUTPUT:  next_state = DONE;
+            DONE:         next_state = IDLE;
+            default:      next_state = IDLE;
+        endcase
+    end
+
+    // Registers
+    always_ff @(posedge clk or posedge rst) begin
+        if (rst) begin
+            for (i = 0; i < N; i++) begin
+                weight[i] <= 0;
+                norm_weight[i] <= 0;
+                position[i] <= 0;
+                strip_count[i] <= 0;
+                for (j = 0; j < N; j++) begin
+                    strip[i][j] <= '0;
+                end
+                temp_out[i] <= '0;
+            end
+            out_ptr <= 0;
+            done <= 0;
+        end
+        else begin
+            case (state)
+                CALC_WEIGHT: begin
+                    for (i = 0; i < N; i++) begin
+                        weight[i] = 0;
+                        for (j = 0; j < N; j++) begin
+                            if (data_in[i] < data_in[j])
+                                weight[i] -= 1;
+                            else if (data_in[i] > data_in[j])
+                                weight[i] += 1;
+                        end
+                    end
+                end
+
+                NORM_WEIGHT: begin
+                    for (i = 0; i < N; i++) begin
+                        if (weight[i] >= 0)
+                            norm_weight[i] = (weight[i] + 1) >>> 1;
+                        else
+                            norm_weight[i] = weight[i] >>> 1;
+                        position[i] = N/2 + norm_weight[i];
+                        if (position[i] < 0) position[i] = 0;
+                        if (position[i] >= N) position[i] = N - 1;
+                    end
+                end
+
+                PLACE_STRIP: begin
+                    for (i = 0; i < N; i++) begin
+                        idx = strip_count[position[i]];
+                        strip[position[i]][idx] = data_in[i];
+                        strip_count[position[i]]++;
+                    end
+                end
+
+                COPY_OUTPUT: begin
+                    out_ptr = 0;
+                    for (i = 0; i < N; i++) begin
+                        for (j = 0; j < strip_count[i]; j++) begin
+                            temp_out[out_ptr] = strip[i][j];
+                            out_ptr++;
+                        end
+                    end
+                    for (i = 0; i < N; i++) begin
+                        data_sorted[i] <= temp_out[i];
+                    end
+                end
+
+                DONE: begin
+                    done <= 1;
+                end
+            endcase
+        end
+    end
 endmodule
+
+  
