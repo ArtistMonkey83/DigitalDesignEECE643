@@ -6,76 +6,65 @@ module KhaniSort #(
     output logic [WIDTH-1:0] data_sorted[N]
 );
 
-    // Internal temporary variables
     typedef int signed_weight_t;
+
     signed_weight_t weight[N];
-    signed_weight_t weight_div2[N];
-    int             positions[N];       // Final index on strip
-    int             used_count[N];      // Tracks if index is occupied
-    logic [WIDTH-1:0] strip[N];
-    int idx, i, j;
+    signed_weight_t adjusted[N];
+    int             position[N];
+    int i, j, pos, idx, out_idx;
+
+    // 2D strip: each index holds up to N values
+    logic [WIDTH-1:0] strip[N][N];
+    int strip_count[N];
 
     always_comb begin
-        // Initialize
+        // Init all
         for (i = 0; i < N; i++) begin
-            weight[i]       = 0;
-            used_count[i]   = 0;
-            strip[i]        = '0;
+            weight[i] = 0;
+            adjusted[i] = 0;
+            position[i] = 0;
+            strip_count[i] = 0;
+            for (j = 0; j < N; j++) begin
+                strip[i][j] = '0;
+            end
         end
 
-        // Step 1: Weight calculation
+        // Step 1: Compute weights
         for (i = 0; i < N; i++) begin
             for (j = 0; j < N; j++) begin
-                if (i != j) begin
-                    if (data_in[i] < data_in[j])
-                        weight[i] -= 1;
-                    else if (data_in[i] > data_in[j])
-                        weight[i] += 1;
-                end
+                if (data_in[i] < data_in[j])
+                    weight[i] -= 1;
+                else if (data_in[i] > data_in[j])
+                    weight[i] += 1;
             end
         end
 
-        // Step 2: Normalize weights and get positions
+        // Step 2: Normalize weights
         for (i = 0; i < N; i++) begin
             if (weight[i] >= 0)
-                weight_div2[i] = (weight[i] + 1) >>> 1;  // Ceil
+                adjusted[i] = (weight[i] + 1) >>> 1; // ceil
             else
-                weight_div2[i] = weight[i] >>> 1;        // Floor
-
-            // Clamp to 0..N-1 (strip index)
-            positions[i] = weight_div2[i] + (N >> 1); // Centered origin
-            if (positions[i] < 0)
-                positions[i] = 0;
-            else if (positions[i] >= N)
-                positions[i] = N - 1;
+                adjusted[i] = weight[i] >>> 1;        // floor
         end
 
-        // Step 3: Place on strip, resolve overwrite by shifting
+        // Step 3: Map to position and insert into strip
         for (i = 0; i < N; i++) begin
-            idx = positions[i];
-            // Find next free position to the right
-            while (idx < N && used_count[idx] != 0)
-                idx++;
-            if (idx < N) begin
-                strip[idx] = data_in[i];
-                used_count[idx] = 1;
-            end
-            else begin
-                // Store as overflow to be handled separately
-                // Append at end (simple method)
-                for (j = 0; j < N; j++) begin
-                    if (used_count[j] == 0) begin
-                        strip[j] = data_in[i];
-                        used_count[j] = 1;
-                        break;
-                    end
-                end
-            end
+            pos = (N >> 1) + adjusted[i]; // origin-centered
+            if (pos < 0) pos = 0;
+            if (pos >= N) pos = N - 1;
+
+            idx = strip_count[pos];
+            strip[pos][idx] = data_in[i];
+            strip_count[pos]++;
         end
 
-        // Final output
+        // Step 4: Flatten strip left-to-right into sorted output
         for (i = 0; i < N; i++) begin
-            data_sorted[i] = strip[i];
+            for (j = 0; j < strip_count[i]; j++) begin
+                data_sorted[out_idx] = strip[i][j];
+                out_idx++;
+            end
         end
     end
+
 endmodule
