@@ -23,7 +23,6 @@ module fsm_sort #(
 
     state_t state, next_state;
 
-    // Internal variables
     int i, j, pos, out_ptr;
     logic [WIDTH-1:0] strip[N][N];
     int strip_count[N];
@@ -31,16 +30,17 @@ module fsm_sort #(
     int weight_div2[N];
     logic [WIDTH-1:0] temp_out[N];
 
-    // Edge detection for start
     logic start_d, start_rising;
-    always_ff @(posedge clk or posedge rst)
+
+    always_ff @(posedge clk or posedge rst) begin
         if (rst)
             start_d <= 0;
         else
             start_d <= start;
+    end
+
     assign start_rising = start & ~start_d;
 
-    // FSM state register
     always_ff @(posedge clk or posedge rst) begin
         if (rst)
             state <= IDLE;
@@ -48,11 +48,9 @@ module fsm_sort #(
             state <= next_state;
     end
 
-    // FSM next state logic
     always_comb begin
-        next_state = state;
         case (state)
-            IDLE:         next_state = (start_rising) ? INIT : IDLE;
+            IDLE:         next_state = start_rising ? INIT : IDLE;
             INIT:         next_state = CALC_WEIGHT;
             CALC_WEIGHT:  next_state = NORM_WEIGHT;
             NORM_WEIGHT:  next_state = PLACE_STRIP;
@@ -60,31 +58,27 @@ module fsm_sort #(
             COPY_OUTPUT:  next_state = WRITE_BACK;
             WRITE_BACK:   next_state = DONE;
             DONE:         next_state = IDLE;
+            default:      next_state = IDLE;
         endcase
     end
 
-    // FSM output + operation
     always_ff @(posedge clk or posedge rst) begin
         if (rst) begin
             done <= 0;
-            for (i = 0; i < N; i++) begin
+            for (i = 0; i < N; i++)
                 data_sorted[i] <= 0;
-            end
         end else begin
             case (state)
 
-                IDLE: begin
-                    done <= 0;
-                end
+                IDLE: done <= 0;
 
                 INIT: begin
                     for (i = 0; i < N; i++) begin
                         strip_count[i] = 0;
                         weight[i] = 0;
                         weight_div2[i] = 0;
-                        for (j = 0; j < N; j++) begin
+                        for (j = 0; j < N; j++)
                             strip[i][j] = 0;
-                        end
                     end
                 end
 
@@ -103,9 +97,9 @@ module fsm_sort #(
                 NORM_WEIGHT: begin
                     for (i = 0; i < N; i++) begin
                         if (weight[i] >= 0)
-                            weight_div2[i] = (weight[i] + 1) >>> 1; // ceil
+                            weight_div2[i] = (weight[i] + 1) >>> 1;
                         else
-                            weight_div2[i] = weight[i] >>> 1;       // floor
+                            weight_div2[i] = weight[i] >>> 1;
                     end
                 end
 
@@ -115,17 +109,25 @@ module fsm_sort #(
                         if (pos < 0) pos = 0;
                         else if (pos >= N) pos = N - 1;
 
-                        int original_pos = pos;
-                        while (strip_count[pos] != 0 && pos < N - 1) pos++;
-                        if (strip_count[pos] == 0) begin
-                            strip[pos][0] = data_in[i];
-                            strip_count[pos] = 1;
-                        end else begin
-                            pos = original_pos;
-                            while (strip_count[pos] != 0 && pos > 0) pos--;
-                            strip[pos][strip_count[pos]] = data_in[i];
-                            strip_count[pos]++;
+                        // Find the correct position or next available slot
+                        while (strip_count[pos] != 0 && pos < N - 1 && strip[pos][0] < data_in[i])
+                            pos++;
+
+                        // If the position is still occupied and the data_in[i] is smaller,
+                        // shift values to the right to make space
+                        if (strip_count[pos] != 0 && strip[pos][0] > data_in[i]) begin
+                            int shift_pos = pos;
+                            while (strip_count[shift_pos] != 0 && shift_pos < N - 1)
+                                shift_pos++;
+                            for (int k = shift_pos; k > pos; k--) begin
+                                strip[k][0] = strip[k-1][0];
+                                strip_count[k] = strip_count[k-1];
+                            end
+                            strip_count[pos] = 0;
                         end
+
+                        strip[pos][strip_count[pos]] = data_in[i];
+                        strip_count[pos]++;
                     end
                 end
 
@@ -140,14 +142,12 @@ module fsm_sort #(
                 end
 
                 WRITE_BACK: begin
-                    for (i = 0; i < N; i++) begin
+                    for (i = 0; i < N; i++)
                         data_sorted[i] <= temp_out[i];
-                    end
                 end
 
-                DONE: begin
-                    done <= 1;
-                end
+                DONE: done <= 1;
+
             endcase
         end
     end
