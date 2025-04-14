@@ -1,5 +1,7 @@
-// FSM-based custom sort module with memory-based strip and edge-triggered start
-module fsm_sort #(parameter N = 6, parameter WIDTH = 8)(
+module fsm_sort #(
+    parameter int N = 6,
+    parameter int WIDTH = 8
+)(
     input  logic clk,
     input  logic rst,
     input  logic start,
@@ -21,31 +23,34 @@ module fsm_sort #(parameter N = 6, parameter WIDTH = 8)(
 
     state_t state, next_state;
 
-    int i, j;
-    logic [$clog2(N)-1:0] idx;
-    logic signed [WIDTH:0] weight[N];
-    logic signed [WIDTH:0] norm_weight[N];
-    logic [$clog2(N)-1:0] position[N];
-    logic [WIDTH-1:0] strip [0:N-1][0:N-1];
-    logic [2:0] strip_count [0:N-1];
-    logic [WIDTH-1:0] temp_out [0:N-1];
-    logic [$clog2(N*N):0] out_ptr;
+    // Internal variables
+    int i, j, pos, out_ptr;
+    logic [WIDTH-1:0] strip[N][N];
+    int strip_count[N];
+    int weight[N];
+    int weight_div2[N];
+    logic [WIDTH-1:0] temp_out[N];
 
-    // Start pulse detector
+    // Edge detection for start
     logic start_d, start_rising;
-    always_ff @(posedge clk or posedge rst) begin
-        if (rst) start_d <= 0;
-        else     start_d <= start;
-    end
+    always_ff @(posedge clk or posedge rst)
+        if (rst)
+            start_d <= 0;
+        else
+            start_d <= start;
     assign start_rising = start & ~start_d;
 
-    // FSM
+    // FSM state register
     always_ff @(posedge clk or posedge rst) begin
-        if (rst) state <= IDLE;
-        else state <= next_state;
+        if (rst)
+            state <= IDLE;
+        else
+            state <= next_state;
     end
 
+    // FSM next state logic
     always_comb begin
+        next_state = state;
         case (state)
             IDLE:         next_state = (start_rising) ? INIT : IDLE;
             INIT:         next_state = CALC_WEIGHT;
@@ -55,44 +60,32 @@ module fsm_sort #(parameter N = 6, parameter WIDTH = 8)(
             COPY_OUTPUT:  next_state = WRITE_BACK;
             WRITE_BACK:   next_state = DONE;
             DONE:         next_state = IDLE;
-            default:      next_state = IDLE;
         endcase
     end
 
+    // FSM output + operation
     always_ff @(posedge clk or posedge rst) begin
         if (rst) begin
-            for (i = 0; i < N; i++) begin
-                data_sorted[i] <= '0;
-                weight[i] <= 0;
-                norm_weight[i] <= 0;
-                position[i] <= 0;
-                strip_count[i] <= 0;
-                temp_out[i] <= '0;
-                for (j = 0; j < N; j++) begin
-                    strip[i][j] <= '0;
-                end
-            end
-            out_ptr <= 0;
             done <= 0;
+            for (i = 0; i < N; i++) begin
+                data_sorted[i] <= 0;
+            end
         end else begin
             case (state)
+
                 IDLE: begin
                     done <= 0;
                 end
 
                 INIT: begin
                     for (i = 0; i < N; i++) begin
-                        weight[i] <= 0;
-                        norm_weight[i] <= 0;
-                        position[i] <= 0;
                         strip_count[i] <= 0;
-                        temp_out[i] <= '0;
-                        data_sorted[i] <= '0;
+                        weight[i] <= 0;
+                        weight_div2[i] <= 0;
                         for (j = 0; j < N; j++) begin
-                            strip[i][j] <= '0;
+                            strip[i][j] <= 0;
                         end
                     end
-                    out_ptr <= 0;
                 end
 
                 CALC_WEIGHT: begin
@@ -110,21 +103,19 @@ module fsm_sort #(parameter N = 6, parameter WIDTH = 8)(
                 NORM_WEIGHT: begin
                     for (i = 0; i < N; i++) begin
                         if (weight[i] >= 0)
-                            norm_weight[i] = (weight[i] + 1) >>> 1;
+                            weight_div2[i] <= (weight[i] + 1) >>> 1; // ceil
                         else
-                            norm_weight[i] = weight[i] >>> 1;
-
-                        position[i] = N/2 + norm_weight[i];
-                        if (position[i] < 0) position[i] = 0;
-                        if (position[i] >= N) position[i] = N - 1;
+                            weight_div2[i] <= weight[i] >>> 1;       // floor
                     end
                 end
 
                 PLACE_STRIP: begin
                     for (i = 0; i < N; i++) begin
-                        idx = strip_count[position[i]];
-                        strip[position[i]][idx] = data_in[i];
-                        strip_count[position[i]]++;
+                        pos = (N >> 1) + weight_div2[i];
+                        if (pos < 0) pos = 0;
+                        if (pos >= N) pos = N - 1;
+                        strip[pos][strip_count[pos]] <= data_in[i];
+                        strip_count[pos] <= strip_count[pos] + 1;
                     end
                 end
 
@@ -132,7 +123,7 @@ module fsm_sort #(parameter N = 6, parameter WIDTH = 8)(
                     out_ptr = 0;
                     for (i = 0; i < N; i++) begin
                         for (j = 0; j < strip_count[i]; j++) begin
-                            temp_out[out_ptr] = strip[i][j];
+                            temp_out[out_ptr] <= strip[i][j];
                             out_ptr++;
                         end
                     end
@@ -150,4 +141,5 @@ module fsm_sort #(parameter N = 6, parameter WIDTH = 8)(
             endcase
         end
     end
+
 endmodule
