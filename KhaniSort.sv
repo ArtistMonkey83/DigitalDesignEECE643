@@ -23,7 +23,6 @@ module fsm_sort #(
 
     state_t state, next_state;
 
-    // Internal variables
     int i, j, pos, out_ptr;
     logic [WIDTH-1:0] strip[N][N];
     int strip_count[N];
@@ -31,7 +30,6 @@ module fsm_sort #(
     int weight_div2[N];
     logic [WIDTH-1:0] temp_out[N];
 
-    // Edge detection for start
     logic start_d, start_rising;
     always_ff @(posedge clk or posedge rst)
         if (rst)
@@ -40,7 +38,6 @@ module fsm_sort #(
             start_d <= start;
     assign start_rising = start & ~start_d;
 
-    // FSM state register
     always_ff @(posedge clk or posedge rst) begin
         if (rst)
             state <= IDLE;
@@ -48,7 +45,6 @@ module fsm_sort #(
             state <= next_state;
     end
 
-    // FSM next state logic
     always_comb begin
         next_state = state;
         case (state)
@@ -63,7 +59,6 @@ module fsm_sort #(
         endcase
     end
 
-    // FSM output + operation
     always_ff @(posedge clk or posedge rst) begin
         if (rst) begin
             done <= 0;
@@ -73,9 +68,7 @@ module fsm_sort #(
         end else begin
             case (state)
 
-                IDLE: begin
-                    done <= 0;
-                end
+                IDLE: done <= 0;
 
                 INIT: begin
                     for (i = 0; i < N; i++) begin
@@ -103,9 +96,9 @@ module fsm_sort #(
                 NORM_WEIGHT: begin
                     for (i = 0; i < N; i++) begin
                         if (weight[i] >= 0)
-                            weight_div2[i] <= (weight[i] + 1) >>> 1; // ceil
+                            weight_div2[i] <= (weight[i] + 1) >>> 1;
                         else
-                            weight_div2[i] <= weight[i] >>> 1;       // floor
+                            weight_div2[i] <= weight[i] >>> 1;
                     end
                 end
 
@@ -123,7 +116,7 @@ module fsm_sort #(
                     out_ptr = 0;
                     for (i = 0; i < N; i++) begin
                         for (j = 0; j < strip_count[i]; j++) begin
-                            temp_out[out_ptr] <= strip[i][j];
+                            temp_out[out_ptr] = strip[i][j]; // ✅ CHANGED: blocking =
                             out_ptr++;
                         end
                     end
@@ -131,13 +124,12 @@ module fsm_sort #(
 
                 WRITE_BACK: begin
                     for (i = 0; i < N; i++) begin
-                        data_sorted[i] <= temp_out[i];
+                        data_sorted[i] = temp_out[i];       // ✅ CHANGED: blocking =
                     end
                 end
 
-                DONE: begin
-                    done <= 1;
-                end
+                DONE: done <= 1;
+
             endcase
         end
     end
