@@ -109,22 +109,8 @@ module fsm_sort #(
                         if (pos < 0) pos = 0;
                         else if (pos >= N) pos = N - 1;
 
-                        // Find the correct position or next available slot
-                        while (strip_count[pos] != 0 && pos < N - 1 && strip[pos][0] < data_in[i])
+                        while (strip_count[pos] != 0 && pos < N - 1)
                             pos++;
-
-                        // If the position is still occupied and the data_in[i] is smaller,
-                        // shift values to the right to make space
-                        if (strip_count[pos] != 0 && strip[pos][0] > data_in[i]) begin
-                            int shift_pos = pos;
-                            while (strip_count[shift_pos] != 0 && shift_pos < N - 1)
-                                shift_pos++;
-                            for (int k = shift_pos; k > pos; k--) begin
-                                strip[k][0] = strip[k-1][0];
-                                strip_count[k] = strip_count[k-1];
-                            end
-                            strip_count[pos] = 0;
-                        end
 
                         strip[pos][strip_count[pos]] = data_in[i];
                         strip_count[pos]++;
@@ -138,6 +124,11 @@ module fsm_sort #(
                             temp_out[out_ptr] = strip[i][j];
                             out_ptr++;
                         end
+                    end
+
+                    // Fill any remaining output slots explicitly with zero
+                    for (; out_ptr < N; out_ptr++) begin
+                        temp_out[out_ptr] = 0;
                     end
                 end
 
@@ -153,5 +144,6 @@ module fsm_sort #(
     end
 
 endmodule
+
 
 
