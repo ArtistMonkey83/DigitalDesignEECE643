@@ -1,4 +1,4 @@
-module custom_sort #(
+module KhaniSort #(
     parameter int N = 6,
     parameter int WIDTH = 8
 )(
@@ -6,70 +6,76 @@ module custom_sort #(
     output logic [WIDTH-1:0] data_sorted[N]
 );
 
-    // Internal weights and position arrays
-    logic signed [$clog2(N*N):0] weights[N];      // Allow large enough size for sum of ±(N-1)
-    logic signed [$clog2(N*N):0] new_weights[N];
-    logic [$clog2(N)-1:0]        final_pos[N];
-    logic [WIDTH-1:0]            strip[N];        // Output strip (temp)
-    int                          overwrite_count[N];
-    int                          i, j;
+    typedef int signed_weight_t;
+    signed_weight_t weight[N];
+    signed_weight_t norm_weight[N];
+    int final_pos[N];
+    int write_count[N];  // overwrite tracker
+    logic [WIDTH-1:0] strip_temp[N];
+    int i, j;
 
-    // Step 1: Calculate weights
     always_comb begin
-        // Initialize everything
+        // Step 1: init
         for (i = 0; i < N; i++) begin
-            weights[i] = 0;
-            overwrite_count[i] = 0;
+            weight[i]      = 0;
+            norm_weight[i] = 0;
+            final_pos[i]   = 0;
+            write_count[i] = 0;
+            strip_temp[i]  = '0;
         end
 
-        // Weight calculation: compare data_in[i] to all others
+        // Step 2: compute weights
         for (i = 0; i < N; i++) begin
             for (j = 0; j < N; j++) begin
                 if (i != j) begin
                     if (data_in[i] < data_in[j])
-                        weights[i] -= 1;
+                        weight[i] -= 1;
                     else if (data_in[i] > data_in[j])
-                        weights[i] += 1;
+                        weight[i] += 1;
                 end
             end
         end
 
-        // Step 2: Divide by 2 and round
+        // Step 3: normalize weights (ceil/floor)
         for (i = 0; i < N; i++) begin
-            if (weights[i] >= 0)
-                new_weights[i] = (weights[i] + 1) >>> 1;  // Ceil for positive
+            if (weight[i] >= 0)
+                norm_weight[i] = (weight[i] + 1) >>> 1; // ceil
             else
-                new_weights[i] = weights[i] >>> 1;        // Floor for negative
-
-            // Clamp to [0, N-1]
-            if (new_weights[i] < 0)
-                final_pos[i] = 0;
-            else if (new_weights[i] >= N)
-                final_pos[i] = N-1;
-            else
-                final_pos[i] = new_weights[i];
+                norm_weight[i] = weight[i] >>> 1;        // floor
         end
 
-        // Step 3: Place elements onto the strip and count overwrites
+        // Step 4: write to strip
+        int placed = 0;
         for (i = 0; i < N; i++) begin
-            if (overwrite_count[final_pos[i]] == 0)
-                strip[final_pos[i]] = data_in[i];
-            else begin
-                // Find next available space to right
-                int k = final_pos[i] + 1;
-                while (k < N && overwrite_count[k] != 0)
-                    k++;
-                if (k < N) begin
-                    strip[k] = data_in[i];
-                    overwrite_count[k]++;
+            int pos = (N / 2) + norm_weight[i];
+            if (pos < 0) pos = 0;
+            if (pos >= N) pos = N - 1;
+
+            // If slot taken, shift right to next free
+            while (pos < N && write_count[pos] != 0)
+                pos++;
+
+            if (pos < N) begin
+                strip_temp[pos] = data_in[i];
+                write_count[pos]++;
+            end else begin
+                // If no slot, start from left and find first free
+                for (j = 0; j < N; j++) begin
+                    if (write_count[j] == 0) begin
+                        strip_temp[j] = data_in[i];
+                        write_count[j]++;
+                        break;
+                    end
                 end
             end
-            overwrite_count[final_pos[i]]++;
         end
 
-        // Step 4: Output strip as sorted result
-        for (i = 0; i < N; i++)
-            data_sorted[i] = strip[i];
+        // Step 5: Copy to output
+        for (i = 0; i < N; i++) begin
+            data_sorted[i] = strip_temp[i];
+        end
     end
 
 endmodule
+
+  
