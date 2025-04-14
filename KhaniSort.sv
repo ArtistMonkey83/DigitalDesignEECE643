@@ -59,6 +59,7 @@ module fsm_sort #(parameter N = 6, parameter WIDTH = 8)(
                     strip[i][j] <= '0;
                 end
                 temp_out[i] <= '0;
+                data_sorted[i] <= '0;
             end
             out_ptr <= 0;
             done <= 0;
@@ -108,14 +109,26 @@ module fsm_sort #(parameter N = 6, parameter WIDTH = 8)(
                     for (i = 0; i < N; i++) begin
                         data_sorted[i] <= temp_out[i];
                     end
+                    // Clear strip and counts for next run
+                    for (i = 0; i < N; i++) begin
+                        strip_count[i] <= 0;
+                        for (j = 0; j < N; j++) begin
+                            strip[i][j] <= '0;
+                        end
+                    end
                 end
 
                 DONE: begin
                     done <= 1;
                 end
+
+                default: begin
+                    done <= 0;
+                end
             endcase
         end
     end
 endmodule
+
 
   
