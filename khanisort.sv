@@ -105,24 +105,12 @@ module fsm_sort #(
 
                 PLACE_STRIP: begin
                     for (i = 0; i < N; i++) begin
-                        pos = weight_div2[i] + (N >> 1);  // keep it centered initially
-if (pos < 0) pos = 0;
-else if (pos >= N) pos = N - 1;
+                        pos = (N >> 1) + weight_div2[i];
+                        if (pos < 0) pos = 0;
+                        else if (pos >= N) pos = N - 1;
 
-// Look both forward and backward from pos to find nearest empty slot
-int offset = 0;
-int found = 0;
-while (!found && offset < N) begin
-    if (pos + offset < N && strip_count[pos + offset] == 0) begin
-        pos = pos + offset;
-        found = 1;
-    end else if (pos - offset >= 0 && strip_count[pos - offset] == 0) begin
-        pos = pos - offset;
-        found = 1;
-    end
-    offset++;
-end
-
+                        while (strip_count[pos] != 0 && pos < N - 1)
+                            pos++;
 
                         strip[pos][strip_count[pos]] = data_in[i];
                         strip_count[pos]++;
