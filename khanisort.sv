@@ -13,9 +13,7 @@ module fsm_sort #(
     typedef enum logic [2:0] {
         IDLE,
         INIT,
-        CALC_WEIGHT,
-        NORM_WEIGHT,
-        PLACE_STRIP,
+        RANK_SORT,
         COPY_OUTPUT,
         WRITE_BACK,
         DONE
@@ -23,15 +21,14 @@ module fsm_sort #(
 
     state_t state, next_state;
 
-    int i, j, pos, out_ptr;
+    int i, j, out_ptr;
     logic [WIDTH-1:0] strip[N][N];
     int strip_count[N];
-    int weight[N];
-    int weight_div2[N];
     logic [WIDTH-1:0] temp_out[N];
 
     logic start_d, start_rising;
 
+    // Edge detection for 'start' signal
     always_ff @(posedge clk or posedge rst) begin
         if (rst)
             start_d <= 0;
@@ -41,6 +38,7 @@ module fsm_sort #(
 
     assign start_rising = start & ~start_d;
 
+    // State transition
     always_ff @(posedge clk or posedge rst) begin
         if (rst)
             state <= IDLE;
@@ -50,18 +48,17 @@ module fsm_sort #(
 
     always_comb begin
         case (state)
-            IDLE:         next_state = start_rising ? INIT : IDLE;
-            INIT:         next_state = CALC_WEIGHT;
-            CALC_WEIGHT:  next_state = NORM_WEIGHT;
-            NORM_WEIGHT:  next_state = PLACE_STRIP;
-            PLACE_STRIP:  next_state = COPY_OUTPUT;
-            COPY_OUTPUT:  next_state = WRITE_BACK;
-            WRITE_BACK:   next_state = DONE;
-            DONE:         next_state = IDLE;
-            default:      next_state = IDLE;
+            IDLE:        next_state = start_rising ? INIT : IDLE;
+            INIT:        next_state = RANK_SORT;
+            RANK_SORT:   next_state = COPY_OUTPUT;
+            COPY_OUTPUT: next_state = WRITE_BACK;
+            WRITE_BACK:  next_state = DONE;
+            DONE:        next_state = IDLE;
+            default:     next_state = IDLE;
         endcase
     end
 
+    // Main FSM logic
     always_ff @(posedge clk or posedge rst) begin
         if (rst) begin
             done <= 0;
@@ -75,85 +72,15 @@ module fsm_sort #(
                 INIT: begin
                     for (i = 0; i < N; i++) begin
                         strip_count[i] = 0;
-                        weight[i] = 0;
-                        weight_div2[i] = 0;
                         for (j = 0; j < N; j++)
                             strip[i][j] = 0;
                     end
                 end
 
-                CALC_WEIGHT: begin
+                RANK_SORT: begin
                     for (i = 0; i < N; i++) begin
-                        weight[i] = 0;
+                        int rank = 0;
                         for (j = 0; j < N; j++) begin
-                            if (data_in[i] < data_in[j])
-                                weight[i] -= 1;
-                            else if (data_in[i] > data_in[j])
-                                weight[i] += 1;
-                        end
-                    end
-                end
 
-                NORM_WEIGHT: begin
-                    for (i = 0; i < N; i++) begin
-                        if (weight[i] >= 0)
-                            weight_div2[i] = (weight[i] + 1) >>> 1;
-                        else
-                            weight_div2[i] = weight[i] >>> 1;
-                    end
-                end
-
-                PLACE_STRIP: begin
-                    for (i = 0; i < N; i++) begin
-                        pos = (N >> 1) + weight_div2[i];
-                        if (pos < 0) pos = 0;
-                        else if (pos >= N) pos = N - 1;
-
-                        int found = 0;
-int offset = 0;
-while (!found && offset < N) begin
-    if ((pos + offset) < N && strip_count[pos + offset] == 0) begin
-        pos = pos + offset;
-        found = 1;
-    end else if ((pos - offset) >= 0 && strip_count[pos - offset] == 0) begin
-        pos = pos - offset;
-        found = 1;
-    end
-    offset++;
-end
-
-
-                        strip[pos][strip_count[pos]] = data_in[i];
-                        strip_count[pos]++;
-                    end
-                end
-
-                COPY_OUTPUT: begin
-                    out_ptr = 0;
-                    for (i = 0; i < N; i++) begin
-                        for (j = 0; j < strip_count[i]; j++) begin
-                            temp_out[out_ptr] = strip[i][j];
-                            out_ptr++;
-                        end
-                    end
-
-                    // Fill any remaining output slots explicitly with zero
-                    for (; out_ptr < N; out_ptr++) begin
-                        temp_out[out_ptr] = 0;
-                    end
-                end
-
-                WRITE_BACK: begin
-                    for (i = 0; i < N; i++)
-                        data_sorted[i] <= temp_out[i];
-                end
-
-                DONE: done <= 1;
-
-            endcase
-        end
-    end
-
-endmodule
 
 
