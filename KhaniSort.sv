@@ -114,7 +114,7 @@ module fsm_sort #(
 
                         strip[pos][strip_count[pos]] = data_in[i];
                         strip_count[pos]++;
-                    end
+                    end 
                 end
 
                 COPY_OUTPUT: begin
