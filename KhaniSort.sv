@@ -1,3 +1,5 @@
+
+
 module fsm_sort #(
     parameter int N = 6,
     parameter int WIDTH = 8
@@ -109,12 +111,9 @@ module fsm_sort #(
                         if (pos < 0) pos = 0;
                         else if (pos >= N) pos = N - 1;
 
-                        // Handle collisions by placing in next available slot
-                        int original_pos = pos;
                         while (strip_count[pos] != 0 && pos < N - 1)
                             pos++;
 
-                        // Place the value in the determined position
                         strip[pos][strip_count[pos]] = data_in[i];
                         strip_count[pos]++;
                     end
@@ -128,9 +127,11 @@ module fsm_sort #(
                             out_ptr++;
                         end
                     end
-                    // Zero-fill remaining slots
-                    for (; out_ptr < N; out_ptr++)
+
+                    // Fill any remaining output slots explicitly with zero
+                    for (; out_ptr < N; out_ptr++) begin
                         temp_out[out_ptr] = 0;
+                    end
                 end
 
                 WRITE_BACK: begin
@@ -145,7 +146,6 @@ module fsm_sort #(
     end
 
 endmodule
-
 
 
 
