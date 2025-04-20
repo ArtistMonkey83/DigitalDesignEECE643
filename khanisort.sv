@@ -81,6 +81,48 @@ module fsm_sort #(
                     for (i = 0; i < N; i++) begin
                         int rank = 0;
                         for (j = 0; j < N; j++) begin
+                            if (data_in[j] < data_in[i])
+                                rank++;
+                        end
+
+                        // Resolve duplicates by shifting forward
+                        int pos = rank;
+                        while (pos < N && strip_count[pos] != 0)
+                            pos++;
+
+                        // Fallback if forward positions are full
+                        if (pos >= N) begin
+                            pos = N - 1;
+                            while (pos >= 0 && strip_count[pos] != 0)
+                                pos--;
+                        end
+
+                        strip[pos][0] = data_in[i];
+                        strip_count[pos] = 1;
+                    end
+                end
+
+                COPY_OUTPUT: begin
+                    out_ptr = 0;
+                    for (i = 0; i < N; i++) begin
+                        for (j = 0; j < strip_count[i]; j++) begin
+                            temp_out[out_ptr] = strip[i][j];
+                            out_ptr++;
+                        end
+                    end
+                end
+
+                WRITE_BACK: begin
+                    for (i = 0; i < N; i++)
+                        data_sorted[i] <= temp_out[i];
+                end
+
+                DONE: done <= 1;
+
+            endcase
+        end
+    end
+endmodule
 
 
 
