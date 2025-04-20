@@ -32,20 +32,22 @@ module fsm_sort #(
 
     logic start_d, start_rising;
 
-    // Detect rising edge of start
-    always_ff @(posedge clk or posedge rst)
-        if (rst) start_d <= 0;
-        else start_d <= start;
+    always_ff @(posedge clk or posedge rst) begin
+        if (rst)
+            start_d <= 0;
+        else
+            start_d <= start;
+    end
 
     assign start_rising = start & ~start_d;
 
-    // State transition logic
     always_ff @(posedge clk or posedge rst) begin
-        if (rst) state <= IDLE;
-        else state <= next_state;
+        if (rst)
+            state <= IDLE;
+        else
+            state <= next_state;
     end
 
-    // FSM next state logic
     always_comb begin
         case (state)
             IDLE:         next_state = start_rising ? INIT : IDLE;
@@ -60,11 +62,11 @@ module fsm_sort #(
         endcase
     end
 
-    // FSM output + internal operations
     always_ff @(posedge clk or posedge rst) begin
         if (rst) begin
             done <= 0;
-            data_sorted <= '{default:0};
+            for (i = 0; i < N; i++)
+                data_sorted[i] <= 0;
         end else begin
             case (state)
 
@@ -95,9 +97,9 @@ module fsm_sort #(
                 NORM_WEIGHT: begin
                     for (i = 0; i < N; i++) begin
                         if (weight[i] >= 0)
-                            weight_div2[i] = (weight[i] + 1) >>> 1; // ceil
+                            weight_div2[i] = (weight[i] + 1) >>> 1;
                         else
-                            weight_div2[i] = weight[i] >>> 1;       // floor
+                            weight_div2[i] = weight[i] >>> 1;
                     end
                 end
 
@@ -106,8 +108,12 @@ module fsm_sort #(
                         pos = (N >> 1) + weight_div2[i];
                         if (pos < 0) pos = 0;
                         else if (pos >= N) pos = N - 1;
+
+                        while (strip_count[pos] != 0 && pos < N - 1)
+                            pos++;
+
                         strip[pos][strip_count[pos]] = data_in[i];
-                        strip_count[pos] = strip_count[pos] + 1;
+                        strip_count[pos]++;
                     end
                 end
 
@@ -116,8 +122,13 @@ module fsm_sort #(
                     for (i = 0; i < N; i++) begin
                         for (j = 0; j < strip_count[i]; j++) begin
                             temp_out[out_ptr] = strip[i][j];
-                            out_ptr = out_ptr + 1;
+                            out_ptr++;
                         end
+                    end
+
+                    // Fill any remaining output slots explicitly with zero
+                    for (; out_ptr < N; out_ptr++) begin
+                        temp_out[out_ptr] = 0;
                     end
                 end
 
@@ -131,7 +142,10 @@ module fsm_sort #(
             endcase
         end
     end
+
 endmodule
+
+
 
 
 
