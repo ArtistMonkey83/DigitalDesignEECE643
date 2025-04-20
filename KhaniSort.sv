@@ -104,18 +104,40 @@ module fsm_sort #(
                 end
 
                 PLACE_STRIP: begin
-                    for (i = 0; i < N; i++) begin
-                        pos = (N >> 1) + weight_div2[i];
-                        if (pos < 0) pos = 0;
-                        else if (pos >= N) pos = N - 1;
+    for (i = 0; i < N; i++) begin
+        pos = (N >> 1) + weight_div2[i];
+        if (pos < 0) pos = 0;
+        else if (pos >= N) pos = N - 1;
 
-                        while (strip_count[pos] != 0 && pos < N - 1)
-                            pos++;
+        int insert_pos = pos;
 
-                        strip[pos][strip_count[pos]] = data_in[i];
-                        strip_count[pos]++;
-                    end 
+        // If position occupied, resolve based on numeric ordering
+        if (strip_count[insert_pos] != 0) begin
+            if (data_in[i] >= strip[insert_pos][0]) begin
+                // Move right to find first open slot
+                while (insert_pos < N && strip_count[insert_pos] != 0)
+                    insert_pos++;
+            end else begin
+                // Smaller element: shift larger numbers rightward
+                int shift_pos = insert_pos;
+                // Find first open slot rightward
+                while (shift_pos < N && strip_count[shift_pos] != 0)
+                    shift_pos++;
+                // Shift elements right to create space
+                for (int k = shift_pos; k > insert_pos; k--) begin
+                    strip[k][0] = strip[k-1][0];
+                    strip_count[k] = strip_count[k-1];
                 end
+                strip_count[insert_pos] = 0; // Free position for smaller element
+            end
+        end
+
+        // Now place data_in[i] safely at insert_pos
+        strip[insert_pos][0] = data_in[i];
+        strip_count[insert_pos] = 1;
+    end 
+end
+
 
                 COPY_OUTPUT: begin
                     out_ptr = 0;
