@@ -2,7 +2,7 @@
 
 module multiply #(
     parameter int WIDTH = 16,
-    parameter int PIPE_STAGES = 10
+    parameter int PIPE_STAGES = 5 // Adjusted for more realistic pipelining
 ) (
     input logic clk,
     input logic [WIDTH-1:0] a,
@@ -10,24 +10,23 @@ module multiply #(
     output logic [2*WIDTH-1:0] result
 );
 
-    logic [2*WIDTH-1:0] pipeline [0:PIPE_STAGES];
+    logic [2*WIDTH-1:0] pipeline [0:PIPE_STAGES-1];
 
-    // Perform multiplication and pipeline the result
-    assign pipeline[0] = a * b;
-
+    // Initial multiplication pipelined over several stages
     always_ff @(posedge clk) begin
-        for (int i = 1; i <= PIPE_STAGES; i++) begin
+        pipeline[0] <= a * b;
+        for (int i = 1; i < PIPE_STAGES; i++) begin
             pipeline[i] <= pipeline[i-1];
         end
     end
 
-    assign result = pipeline[PIPE_STAGES];
+    assign result = pipeline[PIPE_STAGES-1];
 endmodule
 
 module matrix_mult #(
-    parameter int N = 4,
-    parameter int WIDTH = 16,
-    parameter int PIPE_STAGES = 10
+    parameter int N = 4,               // Matrix size (NxN)
+    parameter int WIDTH = 16,          // Bit-width of input elements
+    parameter int PIPE_STAGES = 5      // Reduced pipeline stages in multiplication
 ) (
     input logic clk,
     input logic [WIDTH-1:0] A[N][N],
@@ -35,7 +34,7 @@ module matrix_mult #(
     output logic [2*WIDTH-1:0] C[N][N]
 );
 
-    logic [2*WIDTH-1:0] product[N][N][N];
+    logic [2*WIDTH-1:0] products[N][N][N]; // Product of A[i][k] * B[k][j]
 
     // Generate multipliers
     generate
@@ -49,27 +48,24 @@ module matrix_mult #(
                         .clk(clk),
                         .a(A[i][k]),
                         .b(B[k][j]),
-                        .result(product[i][j][k])
+                        .result(products[i][j][k])
                     );
                 end
             end
         end
     endgenerate
 
-    // Sum the products and pipeline the sums
-    logic [2*WIDTH-1:0] sum_pipeline[N][N][PIPE_STAGES+1];
+    // Summing up the results with reduced computational complexity per cycle
+    logic [2*WIDTH-1:0] sum[N][N];
 
     always_ff @(posedge clk) begin
         for (int i = 0; i < N; i++) begin
             for (int j = 0; j < N; j++) begin
-                sum_pipeline[i][j][0] = 0;
+                sum[i][j] = 0;
                 for (int k = 0; k < N; k++) begin
-                    sum_pipeline[i][j][0] += product[i][j][k];
-                end
-                for (int p = 1; p <= PIPE_STAGES; p++) begin
-                    sum_pipeline[i][j][p] <= sum_pipeline[i][j][p-1];
-                end
-                C[i][j] <= sum_pipeline[i][j][PIPE_STAGES];
+                    sum[i][j] = sum[i][j] + products[i][j][k];
+                }
+                C[i][j] <= sum[i][j];
             end
         end
     end
@@ -78,7 +74,7 @@ endmodule
 module matrix_mult_tb;
     parameter int N = 4;
     parameter int WIDTH = 16;
-    parameter int PIPE_STAGES = 10;
+    parameter int PIPE_STAGES = 5;
 
     logic clk;
     logic [WIDTH-1:0] A[N][N];
@@ -96,8 +92,8 @@ module matrix_mult_tb;
         .C(C)
     );
 
-    // Clock generation for 900 MHz
-    always #0.555 clk = ~clk;
+    // Clock generation for targeted 900 MHz
+    always #0.555 clk = ~clk; // Setting up for 900 MHz frequency
 
     initial begin
         clk = 0;
