@@ -1,7 +1,10 @@
+`timescale 1ns / 1ps
+
+
 module matrix_mult #(
     parameter int N = 4,               // Matrix size (NxN)
     parameter int WIDTH = 16,           // Bit-width of input elements
-    parameter int PIPE_STAGES = 2       // Pipeline stages for multiply
+    parameter int PIPE_STAGES = 10       // Pipeline stages for multiply
 ) (
     input  logic                   clk,
     input  logic [WIDTH-1:0]        A[N][N],
