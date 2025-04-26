@@ -1,46 +1,43 @@
 `timescale 1ns / 1ps
 
 module multiply #(
-    parameter int WIDTH = 16,          // Bit-width of input/output
-    parameter int PIPE_STAGES = 10     // Number of pipeline stages
+    parameter int WIDTH = 16,
+    parameter int PIPE_STAGES = 10
 ) (
-    input  logic clk,
-    input  logic [WIDTH-1:0] a,
-    input  logic [WIDTH-1:0] b,
+    input logic clk,
+    input logic [WIDTH-1:0] a,
+    input logic [WIDTH-1:0] b,
     output logic [2*WIDTH-1:0] result
 );
 
-    logic [2*WIDTH-1:0] mult_result;
-    logic [2*WIDTH-1:0] pipeline [0:PIPE_STAGES-1];
+    logic [2*WIDTH-1:0] pipeline [0:PIPE_STAGES];
 
-    // Perform multiplication
-    assign mult_result = a * b;
+    // Perform multiplication and pipeline the result
+    assign pipeline[0] = a * b;
 
-    // Pipeline the multiplication result
     always_ff @(posedge clk) begin
-        pipeline[0] <= mult_result;
-        for (int i = 1; i < PIPE_STAGES; i++) begin
+        for (int i = 1; i <= PIPE_STAGES; i++) begin
             pipeline[i] <= pipeline[i-1];
         end
     end
 
-    assign result = pipeline[PIPE_STAGES-1];
+    assign result = pipeline[PIPE_STAGES];
 endmodule
 
 module matrix_mult #(
-    parameter int N = 4,                // Matrix size (NxN)
-    parameter int WIDTH = 16,           // Bit-width of input elements
-    parameter int PIPE_STAGES = 10      // Pipeline stages for multiply
+    parameter int N = 4,
+    parameter int WIDTH = 16,
+    parameter int PIPE_STAGES = 10
 ) (
-    input  logic clk,
-    input  logic [WIDTH-1:0] A[N][N],
-    input  logic [WIDTH-1:0] B[N][N],
+    input logic clk,
+    input logic [WIDTH-1:0] A[N][N],
+    input logic [WIDTH-1:0] B[N][N],
     output logic [2*WIDTH-1:0] C[N][N]
 );
 
-    logic [2*WIDTH-1:0] products[N][N][N];    // Product of A[i][k] * B[k][j]
+    logic [2*WIDTH-1:0] product[N][N][N];
 
-    // Generate multipliers and add pipelining
+    // Generate multipliers
     generate
         for (genvar i = 0; i < N; i++) begin
             for (genvar j = 0; j < N; j++) begin
@@ -52,22 +49,27 @@ module matrix_mult #(
                         .clk(clk),
                         .a(A[i][k]),
                         .b(B[k][j]),
-                        .result(products[i][j][k])
+                        .result(product[i][j][k])
                     );
                 end
             end
         end
     endgenerate
 
-    // Summation logic with pipelining
+    // Sum the products and pipeline the sums
+    logic [2*WIDTH-1:0] sum_pipeline[N][N][PIPE_STAGES+1];
+
     always_ff @(posedge clk) begin
         for (int i = 0; i < N; i++) begin
             for (int j = 0; j < N; j++) begin
-                logic [2*WIDTH-1:0] sum = 0;
+                sum_pipeline[i][j][0] = 0;
                 for (int k = 0; k < N; k++) begin
-                    sum += products[i][j][k];
+                    sum_pipeline[i][j][0] += product[i][j][k];
                 end
-                C[i][j] <= sum;
+                for (int p = 1; p <= PIPE_STAGES; p++) begin
+                    sum_pipeline[i][j][p] <= sum_pipeline[i][j][p-1];
+                end
+                C[i][j] <= sum_pipeline[i][j][PIPE_STAGES];
             end
         end
     end
@@ -94,8 +96,8 @@ module matrix_mult_tb;
         .C(C)
     );
 
-    // Clock generation
-    always #0.555 clk = ~clk;  // Adjusted to target closer to 900 MHz
+    // Clock generation for 900 MHz
+    always #0.555 clk = ~clk;
 
     initial begin
         clk = 0;
@@ -104,12 +106,12 @@ module matrix_mult_tb;
             for (int j = 0; j < N; j++) begin
                 A[i][j] = i + j;
                 B[i][j] = (i == j) ? 1 : 0;  // Identity matrix
-            }
+            end
         end
 
         #100;
 
-        // Display result
+        // Display results
         $display("Result matrix C:");
         for (int i = 0; i < N; i++) begin
             for (int j = 0; j < N; j++) begin
