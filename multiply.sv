@@ -4,57 +4,10 @@
 
 `timescale 1ns / 1ps
 
-module multiply #(
-    parameter int DATA_WIDTH = 16,  // Width of the data inputs
-    parameter int PIPE_STAGES = 3   // Number of pipeline stages
-)(
-    input  logic clk,
-    input  logic rst,
-    input  logic [DATA_WIDTH-1:0] a,
-    input  logic [DATA_WIDTH-1:0] b,
-    output logic [2*DATA_WIDTH-1:0] p // Output product
-);
-
-    // Intermediate pipeline registers for the multiplication stages
-    logic [2*DATA_WIDTH-1:0] pipeline_regs[PIPE_STAGES];
-
-    always_ff @(posedge clk or posedge rst) begin
-        if (rst) begin
-            pipeline_regs[0] <= 0;
-        end else begin
-            pipeline_regs[0] <= a * b;  // Initial multiplication stage
-        end
-    end
-
-    // Generate the remaining pipeline stages
-    genvar i;
-    generate
-        for (i = 1; i < PIPE_STAGES; i++) begin
-            always_ff @(posedge clk or posedge rst) begin
-                if (rst) begin
-                    pipeline_regs[i] <= 0;
-                end else begin
-                    pipeline_regs[i] <= pipeline_regs[i-1];  // Pass the result to the next stage
-                end
-            end
-        end
-    endgenerate
-
-    // Assign the final pipeline stage to the output
-    assign p = pipeline_regs[PIPE_STAGES-1];
-
-endmodule
-
-
-
-// ============================
-// matrix_mult.sv
-// ============================
-
 module matrix_mult #(
-    parameter int SIZE = 8,        // Size of the matrix (e.g., 8x8)
+    parameter int SIZE = 8,        // Size of the matrix
     parameter int DATA_WIDTH = 16, // Bit width of matrix elements
-    parameter int PIPE_STAGES = 3  // Number of pipelining stages in the multipliers
+    parameter int PIPE_STAGES = 3  // Number of pipeline stages in the multipliers
 )(
     input  logic clk,
     input  logic rst,
@@ -65,72 +18,140 @@ module matrix_mult #(
     output logic done
 );
 
-    // Internal Variables
-    logic [DATA_WIDTH-1:0] products[SIZE][SIZE][SIZE]; // Intermediate products
-    logic [DATA_WIDTH-1:0] sums[SIZE][SIZE]; // Sums of each row's products for final result
-    logic [PIPE_STAGES-1:0][SIZE][SIZE][SIZE] pipeline_registers; // Pipeline registers for multipliers
-    logic [PIPE_STAGES-1:0][SIZE][SIZE] sum_pipeline_registers; // Pipeline registers for adder tree
+    // Internal variables for storing products and sums
+    logic [2*DATA_WIDTH-1:0] products[SIZE][SIZE][SIZE];  // Intermediate products of multiplication
+    logic [2*DATA_WIDTH-1:0] sums[SIZE][SIZE];            // Sums of products for each element in C
+    logic [SIZE][SIZE] calc_done;                         // Done signals from each multiply instance
 
-    // Pipelined Multipliers Instantiation
+    // Instantiate the multipliers
     genvar i, j, k;
     generate
         for (i = 0; i < SIZE; i++) begin
             for (j = 0; j < SIZE; j++) begin
                 for (k = 0; k < SIZE; k++) begin
-                    always_ff @(posedge clk) begin
-                        if (rst) begin
-                            pipeline_registers[0][i][j][k] <= 0;
-                        end else if (start) begin
-                            pipeline_registers[0][i][j][k] <= A[i][k] * B[k][j];
-                            // Pipeline stages
-                            for (int stage = 1; stage < PIPE_STAGES; stage++) begin
-                                pipeline_registers[stage][i][j][k] <= pipeline_registers[stage-1][i][j][k];
-                            end
-                            products[i][j][k] <= pipeline_registers[PIPE_STAGES-1][i][j][k];
-                        end
-                    end;
+                    multiply #(
+                        .DATA_WIDTH(DATA_WIDTH),
+                        .PIPE_STAGES(PIPE_STAGES)
+                    ) mult_inst (
+                        .clk(clk),
+                        .rst(rst),
+                        .a(A[i][k]),
+                        .b(B[k][j]),
+                        .p(products[i][j][k])
+                    );
                 end
-            end
-        end
-    endgenerate
-
-    // Summation Logic
-    generate
-        for (i = 0; i < SIZE; i++) begin
-            for (j = 0; j < SIZE; j++) begin
+                // Summation logic for each element in C
                 always_comb begin
                     sums[i][j] = 0;
                     for (k = 0; k < SIZE; k++) begin
                         sums[i][j] += products[i][j][k];
                     end
-                    // Register output sums
-                    always_ff @(posedge clk) begin
-                        if (rst) begin
-                            sum_pipeline_registers[0][i][j] <= 0;
-                        end else begin
-                            sum_pipeline_registers[0][i][j] <= sums[i][j];
-                            // Pipeline stages for sums
-                            for (int stage = 1; stage < PIPE_STAGES; stage++) begin
-                                sum_pipeline_registers[stage][i][j] <= sum_pipeline_registers[stage-1][i][j];
-                            end
-                            C[i][j] <= sum_pipeline_registers[PIPE_STAGES-1][i][j];
-                        end
-                    end;
                 end
             end
         end
     endgenerate
 
-    // Done signal logic
+    // Register outputs and provide done signal
+    logic all_done;
     always_ff @(posedge clk) begin
         if (rst) begin
             done <= 0;
+            all_done <= 0;
         end else begin
-            done <= 1; // Set done when the last stage of the pipeline completes
+            all_done <= &calc_done;  // AND all done signals
+            if (all_done) begin
+                done <= 1;
+                // Assign results to output matrix C
+                for (i = 0; i < SIZE; i++) begin
+                    for (j = 0; j < SIZE; j++) begin
+                        C[i][j] <= sums[i][j][DATA_WIDTH-1:0];  // Truncate to original data width
+                    end
+                end
+            end else begin
+                done <= 0;
+            end
         end
     end
 
 endmodule
+
+// ============================
+// matrix_mult.sv
+// ============================
+
+`timescale 1ns / 1ps
+
+module matrix_mult #(
+    parameter int SIZE = 8,        // Size of the matrix
+    parameter int DATA_WIDTH = 16, // Bit width of matrix elements
+    parameter int PIPE_STAGES = 3  // Number of pipeline stages in the multipliers
+)(
+    input  logic clk,
+    input  logic rst,
+    input  logic start,
+    input  logic [DATA_WIDTH-1:0] A[SIZE][SIZE], // Input matrix A
+    input  logic [DATA_WIDTH-1:0] B[SIZE][SIZE], // Input matrix B
+    output logic [DATA_WIDTH-1:0] C[SIZE][SIZE], // Output matrix C
+    output logic done
+);
+
+    // Internal variables for storing products and sums
+    logic [2*DATA_WIDTH-1:0] products[SIZE][SIZE][SIZE];  // Intermediate products of multiplication
+    logic [2*DATA_WIDTH-1:0] sums[SIZE][SIZE];            // Sums of products for each element in C
+    logic [SIZE][SIZE] calc_done;                         // Done signals from each multiply instance
+
+    // Instantiate the multipliers
+    genvar i, j, k;
+    generate
+        for (i = 0; i < SIZE; i++) begin
+            for (j = 0; j < SIZE; j++) begin
+                for (k = 0; k < SIZE; k++) begin
+                    multiply #(
+                        .DATA_WIDTH(DATA_WIDTH),
+                        .PIPE_STAGES(PIPE_STAGES)
+                    ) mult_inst (
+                        .clk(clk),
+                        .rst(rst),
+                        .a(A[i][k]),
+                        .b(B[k][j]),
+                        .p(products[i][j][k])
+                    );
+                end
+                // Summation logic for each element in C
+                always_comb begin
+                    sums[i][j] = 0;
+                    for (k = 0; k < SIZE; k++) begin
+                        sums[i][j] += products[i][j][k];
+                    end
+                end
+            end
+        end
+    endgenerate
+
+    // Register outputs and provide done signal
+    logic all_done;
+    always_ff @(posedge clk) begin
+        if (rst) begin
+            done <= 0;
+            all_done <= 0;
+        end else begin
+            all_done <= &calc_done;  // AND all done signals
+            if (all_done) begin
+                done <= 1;
+                // Assign results to output matrix C
+                for (i = 0; i < SIZE; i++) begin
+                    for (j = 0; j < SIZE; j++) begin
+                        C[i][j] <= sums[i][j][DATA_WIDTH-1:0];  // Truncate to original data width
+                    end
+                end
+            end else begin
+                done <= 0;
+            end
+        end
+    end
+
+endmodule
+
 
 
 // ============================
