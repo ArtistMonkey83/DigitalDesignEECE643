@@ -3,7 +3,7 @@ module matrix_mult_tb;
 
     parameter int N = 4;
     parameter int WIDTH = 16;
-    parameter int PIPE_STAGES = 2;
+    parameter int PIPE_STAGES = 3;
 
     logic clk;
     logic [WIDTH-1:0] A[N][N];
