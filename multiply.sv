@@ -1,6 +1,6 @@
 module multiply #(
     parameter int WIDTH = 16,         // Bit-width of input/output
-    parameter int PIPE_STAGES = 2      // Number of pipeline stages
+    parameter int PIPE_STAGES = 10      // Number of pipeline stages
 ) (
     input  logic                  clk,
     input  logic [WIDTH-1:0]       a,
