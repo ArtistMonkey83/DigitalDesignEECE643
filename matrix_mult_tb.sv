@@ -1,9 +1,8 @@
 `timescale 1ns / 1ps
 module matrix_mult_tb;
-
     parameter int N = 4;
     parameter int WIDTH = 16;
-    parameter int PIPE_STAGES = 3;
+    parameter int PIPE_STAGES = 5;
 
     logic clk;
     logic [WIDTH-1:0] A[N][N];
@@ -21,23 +20,22 @@ module matrix_mult_tb;
         .C(C)
     );
 
-    // Clock generation
-    always #0.5 clk = ~clk; // 1ns clock period = 1GHz!
+    // Clock generation for targeted 900 MHz
+    always #0.555 clk = ~clk; // Setting up for 900 MHz frequency
 
     initial begin
         clk = 0;
-
         // Initialize matrices
         for (int i = 0; i < N; i++) begin
             for (int j = 0; j < N; j++) begin
                 A[i][j] = i + j;
-                B[i][j] = (i==j) ? 1 : 0;  // Identity matrix
+                B[i][j] = (i == j) ? 1 : 0;  // Identity matrix
             end
         end
 
         #100;
 
-        // Display result
+        // Display results
         $display("Result matrix C:");
         for (int i = 0; i < N; i++) begin
             for (int j = 0; j < N; j++) begin
@@ -48,5 +46,4 @@ module matrix_mult_tb;
 
         $stop;
     end
-
 endmodule
