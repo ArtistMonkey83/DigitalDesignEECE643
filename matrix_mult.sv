@@ -1,19 +1,17 @@
 `timescale 1ns / 1ps
 
-
 module matrix_mult #(
     parameter int N = 4,               // Matrix size (NxN)
-    parameter int WIDTH = 16,           // Bit-width of input elements
-    parameter int PIPE_STAGES = 10       // Pipeline stages for multiply
+    parameter int WIDTH = 16,          // Bit-width of input elements
+    parameter int PIPE_STAGES = 5      // Reduced pipeline stages in multiplication
 ) (
-    input  logic                   clk,
-    input  logic [WIDTH-1:0]        A[N][N],
-    input  logic [WIDTH-1:0]        B[N][N],
-    output logic [2*WIDTH-1:0]      C[N][N]
+    input logic clk,
+    input logic [WIDTH-1:0] A[N][N],
+    input logic [WIDTH-1:0] B[N][N],
+    output logic [2*WIDTH-1:0] C[N][N]
 );
 
-    logic [2*WIDTH-1:0] products[N][N][N];   // products[i][j][k] = A[i][k] * B[k][j]
-    logic [2*WIDTH-1:0] sums[N][N][N];       // pipelined sums
+    logic [2*WIDTH-1:0] products[N][N][N]; // Product of A[i][k] * B[k][j]
 
     // Generate multipliers
     generate
@@ -34,18 +32,18 @@ module matrix_mult #(
         end
     endgenerate
 
-    // Pipeline sums using adder trees
+    // Summing up the results with reduced computational complexity per cycle
+    logic [2*WIDTH-1:0] sum[N][N];
+
     always_ff @(posedge clk) begin
         for (int i = 0; i < N; i++) begin
             for (int j = 0; j < N; j++) begin
-                sums[i][j][0] <= products[i][j][0];
-                for (int k = 1; k < N; k++) begin
-                    sums[i][j][k] <= sums[i][j][k-1] + products[i][j][k];
-                end
-                // Final result after all additions
-                C[i][j] <= sums[i][j][N-1];
+                sum[i][j] = 0;
+                for (int k = 0; k < N; k++) begin
+                    sum[i][j] = sum[i][j] + products[i][j][k];
+                }
+                C[i][j] <= sum[i][j];
             end
         end
     end
-
 endmodule
