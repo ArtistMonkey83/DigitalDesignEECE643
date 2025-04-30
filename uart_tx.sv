@@ -1,86 +1,82 @@
-module uart_tx #(
-    parameter CLOCK_FREQ = 50000000, // 50 MHz input clock
-    parameter BAUD_RATE  = 9600
+module uartTX #(
+    parameter CLOCK_FREQ = 100000000, // Basys 3 default clock 100 MHz
+    parameter BAUD_RATE = 9600        // Common baud rate for UART
 )(
-    input  logic clk,             // System clock
-    input  logic rst_n,           // Active-low reset
-    input  logic start_tx,        // Trigger to begin transmitting data
-    input  logic [7:0] data_in,   // 8-bit data to transmit
-    output logic tx,              // UART transmit line
-    output logic busy             // High when transmission is ongoing
+    input logic clk,                // System clock
+    input logic rst,                // System reset
+    input logic [7:0] data_in,      // Input data to transmit
+    input logic transmit,           // Control signal to start transmission
+    output logic tx,                // UART transmit line
+    output logic tx_busy            // Signal to indicate transmission in progress
 );
 
-    // === Calculated constant ===
-    localparam integer CLKS_PER_BIT = CLOCK_FREQ / BAUD_RATE;
+    // Calculate number of clock cycles per bit period
+    localparam integer BIT_PERIOD = CLOCK_FREQ / BAUD_RATE;
 
-    // === Internal signals ===
-    typedef enum logic [2:0] {
-        IDLE,
-        START_BIT,
-        DATA_BITS,
-        STOP_BIT,
-        CLEANUP
-    } state_t;
+    // State definitions for FSM
+    typedef enum {IDLE, START_BIT, DATA_BITS, STOP_BIT, CLEANUP} state_t;
+    state_t state = IDLE;
 
-    state_t state = IDLE;         // Current FSM state
-    logic [12:0] clk_count = 0;   // Counts system clocks per bit
-    logic [2:0] bit_index = 0;    // Index of bit being transmitted
-    logic [7:0] tx_buffer = 0;    // Buffer holding data being sent
+    // Registers for data transmission and counters
+    logic [7:0] shift_reg;
+    integer bit_counter = 0;
+    integer tick_counter = 0;
 
-    // === Main FSM for UART TX ===
-    always_ff @(posedge clk or negedge rst_n) begin
-        if (!rst_n) begin
+    // FSM implementation
+    always_ff @(posedge clk or posedge rst) begin
+        if (rst) begin
             state <= IDLE;
-            clk_count <= 0;
-            bit_index <= 0;
-            tx <= 1;              // Idle state for UART TX is high
-            busy <= 0;
+            tx <= 1; // UART line is idle high
+            tx_busy <= 0;
         end else begin
             case (state)
                 IDLE: begin
-                    tx <= 1;
-                    busy <= 0;
-                    if (start_tx) begin
-                        tx_buffer <= data_in;  // Capture input byte
-                        busy <= 1;
+                    if (transmit) begin
+                        shift_reg <= data_in; // Load data to shift register
+                        tx_busy <= 1;
+                        tick_counter <= 0;
                         state <= START_BIT;
                     end
                 end
                 START_BIT: begin
-                    tx <= 0; // Send start bit (low)
-                    if (clk_count < CLKS_PER_BIT - 1)
-                        clk_count <= clk_count + 1;
-                    else begin
-                        clk_count <= 0;
+                    tx <= 0; // Start bit is low
+                    if (tick_counter < BIT_PERIOD - 1) begin
+                        tick_counter <= tick_counter + 1;
+                    end else begin
+                        tick_counter <= 0;
                         state <= DATA_BITS;
-                        bit_index <= 0;
                     end
                 end
                 DATA_BITS: begin
-                    tx <= tx_buffer[bit_index]; // Send LSB first
-                    if (clk_count < CLKS_PER_BIT - 1)
-                        clk_count <= clk_count + 1;
-                    else begin
-                        clk_count <= 0;
-                        if (bit_index == 7)
+                    tx <= shift_reg[0]; // Transmit LSB first
+                    if (tick_counter < BIT_PERIOD - 1) begin
+                        tick_counter <= tick_counter + 1;
+                    end else begin
+                        shift_reg <= shift_reg >> 1; // Shift to the next bit
+                        tick_counter <= 0;
+                        if (bit_counter < 7) begin
+                            bit_counter <= bit_counter + 1;
+                        end else begin
+                            bit_counter <= 0;
                             state <= STOP_BIT;
-                        else
-                            bit_index <= bit_index + 1;
+                        end
                     end
                 end
                 STOP_BIT: begin
-                    tx <= 1; // Stop bit (high)
-                    if (clk_count < CLKS_PER_BIT - 1)
-                        clk_count <= clk_count + 1;
-                    else begin
-                        clk_count <= 0;
+                    tx <= 1; // Stop bit is high
+                    if (tick_counter < BIT_PERIOD - 1) begin
+                        tick_counter <= tick_counter + 1;
+                    end else begin
+                        tick_counter <= 0;
                         state <= CLEANUP;
                     end
                 end
                 CLEANUP: begin
-                    state <= IDLE; // Ready for next byte
+                    tx_busy <= 0;
+                    state <= IDLE;
                 end
             endcase
         end
     end
 endmodule
+
